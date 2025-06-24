@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 
 class PrescriptionPage extends StatefulWidget {
   final bool isArabic;
-  const PrescriptionPage({super.key, required this.isArabic});
+  final String doctorName;
+  const PrescriptionPage({super.key, required this.isArabic, required this.doctorName});
 
   @override
   State<PrescriptionPage> createState() => _PrescriptionPageState();
@@ -40,6 +41,8 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
 
   List<Map<String, dynamic>> foundPatients = [];
   int? selectedPatientIndex;
+
+  List<Map<String, String>> tempMedicines = [];
 
   List<String> get filteredMedicines {
     if (searchController.text.isEmpty) return medicines;
@@ -103,39 +106,48 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
     }
   }
 
-  Future<void> addPrescription() async {
-    if (selectedPatientIndex == null ||
-        (selectedMedicine == null && customController.text.isEmpty) ||
-        timeController.text.isEmpty) return;
-    final foundPatient = foundPatients[selectedPatientIndex!];
-    String med = selectedMedicine == 'Other/أخرى'
+  void addMedicineToTempList() {
+    String? med = selectedMedicine == 'Other/أخرى'
         ? customController.text.trim()
-        : selectedMedicine!;
-    if (selectedMedicine == 'Other/أخرى' && med.isNotEmpty && !medicines.contains(med)) {
-      setState(() {
-        medicines.insert(medicines.length - 1, med);
-      });
-    }
-    final prescription = {
-      'medicine': med,
-      'patientName': foundPatient['firstName'] ?? '',
-      'patientId': foundPatient['idNumber'] ?? '',
-      'time': timeController.text,
-      'createdAt': DateTime.now().toIso8601String(),
-    };
+        : selectedMedicine;
+    if (med == null || med.isEmpty || timeController.text.isEmpty) return;
     setState(() {
-      prescriptions.add(prescription);
+      tempMedicines.add({
+        'medicine': med,
+        'time': timeController.text,
+      });
+      if (selectedMedicine == 'Other/أخرى' && med.isNotEmpty && !medicines.contains(med)) {
+        medicines.insert(medicines.length - 1, med);
+      }
       selectedMedicine = null;
       customController.clear();
       timeController.clear();
     });
-    // Save to database
-    final uid = foundPatient['uid'];
-    final ref = FirebaseDatabase.instance.ref('prescriptions/$uid').push();
-    await ref.set(prescription);
+  }
+
+  Future<void> addPrescription() async {
+    if (selectedPatientIndex == null || tempMedicines.isEmpty) return;
+    final foundPatient = foundPatients[selectedPatientIndex!];
+    for (final med in tempMedicines) {
+      final prescription = {
+        'medicine': med['medicine'],
+        'patientName': foundPatient['firstName'] ?? '',
+        'patientId': foundPatient['idNumber'] ?? '',
+        'time': med['time'],
+        'createdAt': DateTime.now().toIso8601String(),
+        'doctorName': widget.doctorName,
+      };
+      prescriptions.add(prescription);
+      // Save to database
+      final uid = foundPatient['uid'];
+      final ref = FirebaseDatabase.instance.ref('prescriptions/$uid').push();
+      await ref.set(prescription);
+    }
+    setState(() {
+      tempMedicines.clear();
+    });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text('Prescription added for patient')),
+      SnackBar(content: Text('Prescription(s) added for patient')),
     );
   }
 
@@ -394,30 +406,67 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                               borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 32, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: accentColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: ((selectedMedicine != null && selectedMedicine != 'Other/أخرى') ||
+                                      (selectedMedicine == 'Other/أخرى' && customController.text.isNotEmpty)) &&
+                                  timeController.text.isNotEmpty
+                                  ? addMedicineToTempList
+                                  : null,
+                              child: Text(isArabic ? 'إضافة دواء' : 'Add Medicine'),
+                            ),
                           ),
-                          onPressed: (selectedPatientIndex != null &&
-                                  ((selectedMedicine != null &&
-                                          selectedMedicine != 'Other/أخرى') ||
-                                      (selectedMedicine == 'Other/أخرى' &&
-                                          customController.text.isNotEmpty)) &&
-                                  timeController.text.isNotEmpty)
-                              ? addPrescription
-                              : null,
-                          child: Text(isArabic
-                              ? 'إضافة الوصفة'
-                              : 'Add Prescription'),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                              onPressed: selectedPatientIndex != null && tempMedicines.isNotEmpty
+                                  ? addPrescription
+                                  : null,
+                              child: Text(isArabic ? 'حفظ الوصفة' : 'Save Prescription'),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (tempMedicines.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isArabic ? 'الأدوية المضافة:' : 'Added medicines:',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: accentColor),
+                              ),
+                              ...tempMedicines.map((med) => Card(
+                                    color: cardColor,
+                                    margin: const EdgeInsets.symmetric(vertical: 4),
+                                    child: ListTile(
+                                      title: Text(med['medicine'] ?? ''),
+                                      subtitle: Text((isArabic ? 'وقت الاستخدام: ' : 'Time: ') + (med['time'] ?? '')),
+                                    ),
+                                  )),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),

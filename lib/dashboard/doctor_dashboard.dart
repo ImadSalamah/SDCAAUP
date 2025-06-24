@@ -521,7 +521,10 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => PrescriptionPage(isArabic: _isArabic(context)),
+              builder: (context) => PrescriptionPage(
+                isArabic: _isArabic(context),
+                doctorName: _supervisorName,
+              ),
             ),
           );
         }

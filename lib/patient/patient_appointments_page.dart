@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
+import 'patient_sidebar.dart';
+import 'patient_prescriptions_page.dart';
+import 'patient_profile_page.dart';
+import '../dashboard/patient_dashboard.dart';
 
 class PatientAppointmentsPage extends StatefulWidget {
   final String patientUid;
@@ -13,8 +17,8 @@ class PatientAppointmentsPage extends StatefulWidget {
 
 class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
-  List<Map<String, dynamic>> _appointments = [];
   bool _isLoading = true;
+  List<Map<String, dynamic>> _appointments = [];
 
   @override
   void initState() {
@@ -97,6 +101,57 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
     }
   }
 
+  void _handleSidebarNavigation(String route) async {
+    if (ModalRoute.of(context)?.settings.name == route) return;
+    switch (route) {
+      case '/patient_dashboard':
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const PatientDashboard()),
+          (route) => false,
+        );
+        break;
+      case '/medical_records':
+        Navigator.pushNamed(context, '/medical_records');
+        break;
+      case '/patient_appointments':
+        // Already here
+        break;
+      case '/patient_prescriptions':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PatientPrescriptionsPage(patientId: widget.patientUid),
+          ),
+        );
+        break;
+      case '/patient_profile':
+        // جلب بيانات المريض من قاعدة البيانات
+        final userSnap = await _database.child('users/${widget.patientUid}').get();
+        Map<String, dynamic> patientData = {};
+        String patientImageUrl = '';
+        if (userSnap.exists && userSnap.value != null) {
+          patientData = Map<String, dynamic>.from(userSnap.value as Map);
+          final imageData = patientData['image']?.toString() ?? '';
+          if (imageData.isNotEmpty) {
+            patientImageUrl = 'data:image/jpeg;base64,$imageData';
+          }
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PatientProfilePage(
+              patientData: patientData,
+              patientImageUrl: patientImageUrl,
+            ),
+          ),
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -109,7 +164,11 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('مواعيد ${widget.patientName}'),
+        title: Text('مواعيدي'),
+      ),
+      drawer: PatientSidebar(
+        onNavigate: _handleSidebarNavigation,
+        currentRoute: '/patient_appointments',
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

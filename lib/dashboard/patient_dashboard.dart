@@ -6,6 +6,10 @@ import 'dart:convert';
 import '../providers/language_provider.dart';
 import '../loginpage.dart';
 import '../notifications_page.dart';
+import '../patient/patient_prescriptions_page.dart';
+import '../patient/patient_profile_page.dart';
+import '../patient/patient_appointments_page.dart';
+import '../patient/patient_sidebar.dart';
 
 class PatientDashboard extends StatefulWidget {
   const PatientDashboard({super.key});
@@ -267,6 +271,62 @@ class _PatientDashboardState extends State<PatientDashboard> {
     });
   }
 
+  void _handleSidebarNavigation(String route) {
+    if (ModalRoute.of(context)?.settings.name == route) return;
+    switch (route) {
+      case '/patient_dashboard':
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PatientDashboard()),
+        );
+        break;
+      case '/medical_records':
+        _navigateTo(context, '/medical_records');
+        break;
+      case '/patient_appointments':
+        final user = _auth.currentUser;
+        if (user != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PatientAppointmentsPage(
+                patientUid: user.uid,
+                patientName: _patientName,
+              ),
+            ),
+          );
+        }
+        break;
+      case '/patient_prescriptions':
+        final user = _auth.currentUser;
+        if (user != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PatientPrescriptionsPage(patientId: user.uid),
+            ),
+          );
+        }
+        break;
+      case '/patient_profile':
+        _patientRef.get().then((snapshot) {
+          final data = Map<String, dynamic>.from(snapshot.value as Map);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PatientProfilePage(
+                patientData: data,
+                patientImageUrl: _patientImageUrl,
+              ),
+            ),
+          );
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
@@ -334,6 +394,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
                 icon: const Icon(Icons.logout, color: Colors.white),
               )
             ],
+          ),
+          drawer: PatientSidebar(
+            onNavigate: _handleSidebarNavigation,
+            currentRoute: ModalRoute.of(context)?.settings.name ?? '/patient_dashboard',
           ),
           body: Builder(
             builder: (context) {
@@ -543,21 +607,56 @@ class _PatientDashboardState extends State<PatientDashboard> {
                             Icons.calendar_today,
                             _translate(context, 'appointments'),
                             Colors.green,
-                            () => _navigateTo(context, '/appointments'),
+                            () {
+                              final user = _auth.currentUser;
+                              if (user != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PatientAppointmentsPage(
+                                      patientUid: user.uid,
+                                      patientName: _patientName,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
                           ),
                           _buildFeatureBox(
                             context,
                             Icons.medication,
                             _translate(context, 'prescriptions'),
                             Colors.orange,
-                            () => _navigateTo(context, '/prescriptions'),
+                            () {
+                              final user = _auth.currentUser;
+                              if (user != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PatientPrescriptionsPage(patientId: user.uid),
+                                  ),
+                                );
+                              }
+                            },
                           ),
                           _buildFeatureBox(
                             context,
                             Icons.person,
                             _translate(context, 'profile'),
                             Colors.purple,
-                            () => _navigateTo(context, '/profile'),
+                            () async {
+                              final snapshot = await _patientRef.get();
+                              final data = Map<String, dynamic>.from(snapshot.value as Map);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PatientProfilePage(
+                                    patientData: data,
+                                    patientImageUrl: _patientImageUrl,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -685,21 +784,56 @@ class _PatientDashboardState extends State<PatientDashboard> {
                       Icons.calendar_today,
                       _translate(context, 'appointments'),
                       Colors.green,
-                      () => _navigateTo(context, '/appointments'),
+                      () {
+                        final user = _auth.currentUser;
+                        if (user != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PatientAppointmentsPage(
+                                patientUid: user.uid,
+                                patientName: _patientName,
+                              ),
+                            ),
+                          );
+                        }
+                      },
                     ),
                     _buildFeatureBox(
                       context,
                       Icons.medication,
                       _translate(context, 'prescriptions'),
                       Colors.orange,
-                      () => _navigateTo(context, '/prescriptions'),
+                      () {
+                        final user = _auth.currentUser;
+                        if (user != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PatientPrescriptionsPage(patientId: user.uid),
+                            ),
+                          );
+                        }
+                      },
                     ),
                     _buildFeatureBox(
                       context,
                       Icons.person,
                       _translate(context, 'profile'),
                       Colors.purple,
-                      () => _navigateTo(context, '/profile'),
+                      () async {
+                        final snapshot = await _patientRef.get();
+                        final data = Map<String, dynamic>.from(snapshot.value as Map);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PatientProfilePage(
+                              patientData: data,
+                              patientImageUrl: _patientImageUrl,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
