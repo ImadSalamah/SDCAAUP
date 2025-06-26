@@ -19,11 +19,31 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
   bool _isLoading = true;
   List<Map<String, dynamic>> _appointments = [];
+  String patientImageUrl = '';
+  bool patientInfoLoading = true;
 
   @override
   void initState() {
     super.initState();
     _fetchAppointments();
+    _loadPatientInfo();
+  }
+
+  void _loadPatientInfo() async {
+    final userSnap = await _database.child('users/${widget.patientUid}').get();
+    if (userSnap.exists && userSnap.value != null) {
+      final userData = Map<String, dynamic>.from(userSnap.value as Map);
+      final imageData = userData['image']?.toString() ?? '';
+      setState(() {
+        patientImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
+        patientInfoLoading = false;
+      });
+    } else {
+      setState(() {
+        patientImageUrl = '';
+        patientInfoLoading = false;
+      });
+    }
   }
 
   Future<void> _fetchAppointments() async {
@@ -154,6 +174,7 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final today = DateTime.now();
     final todayStr = today.toIso8601String().substring(0, 10);
     bool hasTodayAppointment = _appointments.any((appt) {
@@ -162,31 +183,48 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
       return dateOnly == todayStr;
     });
 
+    final Color primaryColor = const Color(0xFF2A7A94);
+    final locale = Localizations.localeOf(context).languageCode;
+    String t(String ar, String en) => locale == 'ar' ? ar : en;
+    final todayLabel = t('اليوم', 'Today');
+    final hasTodayLabel = t('يوجد موعد اليوم', 'You have an appointment today');
+    final noTodayLabel = t('لا يوجد موعد اليوم', 'No appointment today');
+    final isTodayLabel = t('موعد اليوم', 'Today');
+    final notTodayLabel = t('ليس اليوم', 'Not today');
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('مواعيدي'),
+        title: Text(t('مواعيدي', 'My Appointments'), style: theme.textTheme.headlineSmall?.copyWith(color: Colors.white)),
+        backgroundColor: primaryColor, // اللون الرئيسي الموحد
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 2,
       ),
       drawer: PatientSidebar(
         onNavigate: _handleSidebarNavigation,
         currentRoute: '/patient_appointments',
+        patientName: widget.patientName,
+        patientImageUrl: patientImageUrl,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _appointments.isEmpty
-              ? const Center(child: Text('لا يوجد مواعيد'))
+              ? Center(
+                  child: Text(t('لا يوجد مواعيد', 'No appointments'), style: theme.textTheme.titleMedium?.copyWith(color: theme.hintColor)),
+                )
               : Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Chip(
                             label: Text(
-                              hasTodayAppointment ? 'يوجد موعد اليوم' : 'لا يوجد موعد اليوم',
-                              style: const TextStyle(color: Colors.white),
+                              hasTodayAppointment ? hasTodayLabel : noTodayLabel,
+                              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                             ),
-                            backgroundColor: hasTodayAppointment ? Colors.green : Colors.red,
+                            backgroundColor: primaryColor, // اللون الرئيسي الموحد
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           ),
                         ],
                       ),
@@ -209,31 +247,39 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
                           bool isToday = dateOnly == todayStr;
 
                           return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: theme.primaryColorLight, width: 1),
+                            ),
+                            elevation: 3,
                             child: ListTile(
-                              title: Text('تاريخ الموعد: $dateOnly'),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                              title: Text('${t('تاريخ الموعد', 'Appointment Date')}: $dateOnly', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: primaryColor)),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('أنشأ الموعد: ${appt['createdByName'] ?? '---'}'),
+                                  const SizedBox(height: 4),
+                                  Text('${t('أنشأ الموعد', 'Created by')}: ${appt['createdByName'] ?? '---'}', style: theme.textTheme.bodyMedium),
                                   if ((appt['createdByPhone'] ?? '').isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.symmetric(vertical: 4.0),
                                       child: Text(
-                                        'رقم هاتف الطالب: ${appt['createdByPhone']}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                                        '${t('رقم هاتف الطالب', 'Student phone')}: ${appt['createdByPhone']}',
+                                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: primaryColor),
                                       ),
                                     ),
                                   if (appt['start'] != null && appt['end'] != null)
-                                    Text('من: ${formatTime(appt['start'])} إلى: ${formatTime(appt['end'])}'),
+                                    Text('${t('من', 'From')}: ${formatTime(appt['start'])} ${t('إلى', 'to')}: ${formatTime(appt['end'])}', style: theme.textTheme.bodyMedium),
                                 ],
                               ),
                               trailing: Chip(
                                 label: Text(
-                                  isToday ? 'موعد اليوم' : 'ليس اليوم',
-                                  style: const TextStyle(color: Colors.white),
+                                  isToday ? isTodayLabel : notTodayLabel,
+                                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
                                 ),
-                                backgroundColor: isToday ? Colors.green : Colors.red,
+                                backgroundColor: isToday ? primaryColor : Colors.grey,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               ),
                             ),
                           );

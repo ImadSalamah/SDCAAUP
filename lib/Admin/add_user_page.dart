@@ -528,7 +528,6 @@ class _AddUserPageState extends State<AddUserPage> {
       userImageUrl: widget.userImageUrl,
       primaryColor: primaryColor,
       accentColor: accentColor,
-      onLogout: widget.onLogout,
       body: LayoutBuilder(
         builder: (context, constraints) {
           return Center(

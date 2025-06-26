@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../Doctor/doctor_sidebar.dart';
+
+import 'doctor_sidebar.dart'; // تأكد من استيراد ملف DoctorSidebar
 
 class DoctorGroupsPage extends StatefulWidget {
   const DoctorGroupsPage({super.key});
@@ -23,6 +24,12 @@ class _DoctorGroupsPageState extends State<DoctorGroupsPage> {
     super.initState();
     _loadGroups();
     _loadDoctorInfo();
+    // Ensure drawer is closed on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+        Navigator.of(context).pop();
+      }
+    });
   }
 
   Future<void> _loadDoctorInfo() async {
@@ -73,7 +80,6 @@ class _DoctorGroupsPageState extends State<DoctorGroupsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isLargeScreen = MediaQuery.of(context).size.width >= 900;
     const Color primaryColor = Color(0xFF2A7A94);
     const Color accentColor = Color(0xFF4AB8D8);
     const Color backgroundColor = Colors.white;
@@ -88,9 +94,11 @@ class _DoctorGroupsPageState extends State<DoctorGroupsPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: AppBar(
-          title: const Text(
-            'شعب الإشراف',
-            style: TextStyle(
+          title: Text(
+            Localizations.localeOf(context).languageCode == 'en'
+                ? 'Supervision Groups'
+                : 'شعب الإشراف',
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 22,
@@ -114,74 +122,62 @@ class _DoctorGroupsPageState extends State<DoctorGroupsPage> {
           ),
         ),
       ),
-      drawer: !isLargeScreen
-          ? DoctorSidebar(
-              primaryColor: primaryColor,
-              accentColor: accentColor,
-              userName: _doctorName ?? '',
-              userImageUrl: _doctorImageUrl,
-              translate: (ctx, key) => key,
-              parentContext: context,
-            )
-          : null,
-      body: Stack(
-        children: [
-          if (isLargeScreen)
-            Container(
-              width: 260,
-              child: DoctorSidebar(
-                primaryColor: primaryColor,
-                accentColor: accentColor,
-                userName: _doctorName ?? '',
-                userImageUrl: _doctorImageUrl,
-                translate: (ctx, key) => key,
-                collapsed: true,
-                parentContext: context,
-              ),
-            ),
-          Padding(
-            padding: EdgeInsets.only(right: isLargeScreen ? 260 : 0, top: 24, left: 24, bottom: 24),
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _groups.isEmpty
-                    ? const Center(child: Text('لا يوجد شعب إشراف حالياً', style: TextStyle(color: textSecondary, fontSize: 18)))
-                    : ListView.builder(
-                        itemCount: _groups.length,
-                        itemBuilder: (context, index) {
-                          final group = _groups[index];
-                          return Card(
-                            color: cardColor,
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: const BorderSide(color: borderColor, width: 1),
+      drawer: Directionality(
+        textDirection: Localizations.localeOf(context).languageCode == 'en'
+            ? TextDirection.ltr
+            : TextDirection.rtl,
+        child: DoctorSidebar(
+          primaryColor: const Color(0xFF2A7A94),
+          accentColor: const Color(0xFF4AB8D8),
+          userName: _doctorName ?? '',
+          userImageUrl: _doctorImageUrl,
+          translate: (ctx, key) => key,
+          parentContext: context,
+          collapsed: false, // السايدبار كامل
+          // إذا كان هناك خاصية لمحاذاة الأيقونات أو النصوص في DoctorSidebar أضفها هنا
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _groups.isEmpty
+                ? const Center(child: Text('لا يوجد شعب إشراف حالياً', style: TextStyle(color: textSecondary, fontSize: 18)))
+                : ListView.builder(
+                    itemCount: _groups.length,
+                    itemBuilder: (context, index) {
+                      final group = _groups[index];
+                      return Card(
+                        color: cardColor,
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: borderColor, width: 1),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          title: Text(
+                            group['courseName'] ?? 'بدون اسم',
+                            style: const TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
+                          ),
+                          subtitle: Text(
+                            'الشعبة: ${group['groupNumber'] ?? ''}',
+                            style: const TextStyle(color: textSecondary, fontSize: 15),
+                          ),
+                          trailing: Container(
+                            decoration: BoxDecoration(
+                              color: accentColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                              title: Text(
-                                group['courseName'] ?? 'بدون اسم',
-                                style: const TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 18),
-                              ),
-                              subtitle: Text(
-                                'الشعبة: ${group['groupNumber'] ?? ''}',
-                                style: const TextStyle(color: textSecondary, fontSize: 15),
-                              ),
-                              trailing: Container(
-                                decoration: BoxDecoration(
-                                  color: accentColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                padding: const EdgeInsets.all(8),
-                                child: const Icon(Icons.arrow_forward_ios, color: accentColor, size: 20),
-                              ),
-                              onTap: () => _openGroupMarks(group),
-                            ),
-                          );
-                        },
-                      ),
-          ),
-        ],
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(Icons.arrow_forward_ios, color: accentColor, size: 20),
+                          ),
+                          onTap: () => _openGroupMarks(group),
+                        ),
+                      );
+                    },
+                  ),
       ),
     );
   }

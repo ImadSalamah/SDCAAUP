@@ -12,6 +12,7 @@ import '../Doctor/examined_patients_page.dart';
 import '../Doctor/doctor_sidebar.dart';
 import '../notifications_page.dart';
 import '../Doctor/prescription_page.dart';
+import '../Doctor/doctor_xray_request_page.dart';
 
 class SupervisorDashboard extends StatefulWidget {
   const SupervisorDashboard({super.key});
@@ -33,7 +34,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
   bool _hasError = false;
   final int _retryCount = 0;
   final int _maxRetries = 3;
-  bool _isSidebarVisible = false; // اجعله false ليكون مغلق عند البداية
+  bool _isSidebarVisible = false;
 
   bool hasNewNotification = false;
 
@@ -65,6 +66,8 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
     'supervision_groups': {'ar': 'شعب الإشراف', 'en': 'Supervision Groups'},
     'examined_patients': {'ar': 'المرضى المفحوصين', 'en': 'Examined Patients'},
     'home': {'ar': 'الرئيسية', 'en': 'Home'},
+    'show_sidebar': {'ar': 'إظهار القائمة', 'en': 'Show Sidebar'},
+    'hide_sidebar': {'ar': 'إخفاء القائمة', 'en': 'Hide Sidebar'},
   };
 
   @override
@@ -133,7 +136,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
 
     setState(() {
       _supervisorName = fullName.isNotEmpty
-          ? "د. $fullName"
+          ? _isArabic(context) ? "د. $fullName" : "Dr. $fullName"
           : _translate(context, 'supervisor');
       _supervisorImageUrl =
           imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
@@ -193,7 +196,10 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
         actions: [
           TextButton(
             onPressed: () => ScaffoldMessenger.of(context).clearMaterialBanners(),
-            child: const Text('إغلاق', style: TextStyle(color: Colors.white)),
+            child: Text(
+              _translate(context, 'close'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -212,7 +218,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
             hasNewNotification = true;
           });
           showDashboardBanner(
-            data['title'] != null ? '${data['title']}\n${data['message'] ?? ''}' : 'لديك إشعار جديد',
+            data['title'] != null ? '${data['title']}\n${data['message'] ?? ''}' : _translate(context, 'new_notification'),
             backgroundColor: Colors.blue.shade700,
           );
         }
@@ -221,14 +227,12 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
   }
 
   String _translate(BuildContext context, String key) {
-    final languageProvider =
-        Provider.of<LanguageProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
     return _translations[key]?[languageProvider.currentLocale.languageCode] ?? key;
   }
 
   bool _isArabic(BuildContext context) {
-    final languageProvider =
-        Provider.of<LanguageProvider>(context, listen: false);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
     return languageProvider.currentLocale.languageCode == 'ar';
   }
 
@@ -238,7 +242,6 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
 
   Future<void> _signOut() async {
     try {
-      // عرض مؤشر تحميل
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -259,18 +262,15 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
       await _auth.signOut();
       if (!mounted) return;
 
-      // إغلاق مؤشر التحميل
       Navigator.of(context).pop();
       if (!mounted) return;
 
-      // الانتقال إلى صفحة تسجيل الدخول وإزالة جميع الصفحات السابقة
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),
         (Route<dynamic> route) => false,
       );
     } catch (e) {
-      // إغلاق مؤشر التحميل في حالة الخطأ
       if (mounted) {
         Navigator.of(context).pop();
 
@@ -291,101 +291,101 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
     final isSmallScreen = mediaQuery.size.width < 350;
     final isLargeScreen = mediaQuery.size.width >= 900;
 
-    return Directionality(
-      textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
-      child: WillPopScope(
-        onWillPop: () async {
-          ScaffoldMessenger.of(context).clearMaterialBanners();
-          return true;
-        },
-        child: Scaffold(
-          key: _scaffoldKey,
-          appBar: AppBar(
-            backgroundColor: primaryColor,
-            title: Text(
-              _translate(context, 'app_name'),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isSmallScreen ? 16 : 18,
-                fontWeight: FontWeight.bold,
-              ),
+    return WillPopScope(
+      onWillPop: () async {
+        ScaffoldMessenger.of(context).clearMaterialBanners();
+        return true;
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        appBar: AppBar(
+          backgroundColor: primaryColor,
+          title: Text(
+            _translate(context, 'app_name'),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isSmallScreen ? 16 : 18,
+              fontWeight: FontWeight.bold,
             ),
-            centerTitle: true,
-            automaticallyImplyLeading: false,
-            leading: IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white),
-              onPressed: () {
-                if (isLargeScreen) {
-                  setState(() {
-                    _isSidebarVisible = !_isSidebarVisible;
-                  });
-                } else {
-                  _scaffoldKey.currentState?.openDrawer();
-                }
-              },
-              tooltip: _isSidebarVisible
-                  ? (_isArabic(context) ? 'إخفاء القائمة' : 'Hide Sidebar')
-                  : (_isArabic(context) ? 'إظهار القائمة' : 'Show Sidebar'),
-            ),
-            actions: [
-              Stack(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.notifications,
-                      color: hasNewNotification ? Colors.red : Colors.white,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        hasNewNotification = false;
-                      });
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const NotificationsPage()),
-                      );
-                    },
+          ),
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {
+              if (isLargeScreen) {
+                setState(() {
+                  _isSidebarVisible = !_isSidebarVisible;
+                });
+              } else {
+                _scaffoldKey.currentState?.openDrawer();
+              }
+            },
+            tooltip: _isSidebarVisible
+                ? _translate(context, 'hide_sidebar')
+                : _translate(context, 'show_sidebar'),
+          ),
+          actions: [
+            Stack(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.notifications,
+                    color: hasNewNotification ? Colors.red : Colors.white,
                   ),
-                  if (hasNewNotification)
-                    Positioned(
-                      right: 10,
-                      top: 10,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
+                  onPressed: () {
+                    setState(() {
+                      hasNewNotification = false;
+                    });
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationsPage()),
+                    );
+                  },
+                ),
+                if (hasNewNotification)
+                  Positioned(
+                    right: 10,
+                    top: 10,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.language, color: Colors.white),
-                onPressed: () => languageProvider.toggleLanguage(),
-              ),
-              IconButton(
-                onPressed: _signOut,
-                icon: const Icon(Icons.logout, color: Colors.white),
+                  ),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.language, color: Colors.white),
+              onPressed: () => languageProvider.toggleLanguage(),
+            ),
+            IconButton(
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout, color: Colors.white),
+            )
+          ],
+        ),
+        drawer: !isLargeScreen
+            ? DoctorSidebar(
+                primaryColor: primaryColor,
+                accentColor: accentColor,
+                userName: _supervisorName,
+                userImageUrl: _supervisorImageUrl,
+                onLogout: _signOut,
+                parentContext: context,
+                translate: _translate,
               )
-            ],
-          ),
-          drawer: !isLargeScreen
-              ? DoctorSidebar(
-                  primaryColor: primaryColor,
-                  accentColor: accentColor,
-                  userName: _supervisorName,
-                  userImageUrl: _supervisorImageUrl,
-                  onLogout: _signOut,
-                  parentContext: context,
-                  translate: _translate,
-                )
-              : null,
-          body: Stack(
-            children: [
-              if (isLargeScreen && _isSidebarVisible)
-                Container(
-                  width: 260, // حجم ثابت للسايد بار
+            : null,
+        body: Stack(
+          children: [
+            if (isLargeScreen && _isSidebarVisible)
+              Directionality(
+                textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
+                child: Container(
+                  width: 260,
                   child: DoctorSidebar(
                     primaryColor: primaryColor,
                     accentColor: accentColor,
@@ -393,19 +393,22 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                     userImageUrl: _supervisorImageUrl,
                     onLogout: _signOut,
                     parentContext: context,
-                    collapsed: true,
+                    collapsed: false,
                     translate: _translate,
                   ),
                 ),
-              Padding(
-                padding: EdgeInsets.only(
-                  right: (isLargeScreen && _isSidebarVisible) ? 260 : 0, // نفس عرض السايد بار
-                  left: 0,
-                ),
+              ),
+            Padding(
+              padding: EdgeInsets.only(
+                left: (isLargeScreen && _isSidebarVisible && !_isArabic(context)) ? 260 : 0,
+                right: (isLargeScreen && _isSidebarVisible && _isArabic(context)) ? 260 : 0,
+              ),
+              child: Directionality(
+                textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
                 child: _buildBody(context),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -515,7 +518,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
       },
       {
         'icon': Icons.medical_services,
-        'title': _isArabic(context) ? 'وصفة طبية' : 'Prescription',
+        'title': _translate(context, 'prescription'),
         'color': Colors.deepPurple,
         'onTap': () {
           Navigator.push(
@@ -523,8 +526,20 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
             MaterialPageRoute(
               builder: (context) => PrescriptionPage(
                 isArabic: _isArabic(context),
-                doctorName: _supervisorName,
               ),
+            ),
+          );
+        }
+      },
+      {
+        'icon': Icons.camera_alt,
+        'title': _translate(context, 'xray_request'),
+        'color': Colors.orange,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const DoctorXrayRequestPage(),
             ),
           );
         }

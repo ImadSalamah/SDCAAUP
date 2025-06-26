@@ -135,15 +135,6 @@ class _AddDentalStudentPageState extends State<AddDentalStudentPage> {
               backgroundColor: primaryColor,
               foregroundColor: Colors.white,
               automaticallyImplyLeading: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.language),
-                  tooltip: 'تغيير اللغة',
-                  onPressed: () {
-                    Provider.of<LanguageProvider>(context, listen: false).toggleLanguage();
-                  },
-                ),
-              ],
               leading: isLargeScreen
                   ? (showSidebarButton && !isSidebarOpen
                       ? IconButton(

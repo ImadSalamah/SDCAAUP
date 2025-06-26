@@ -3,6 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 import '../../providers/language_provider.dart';
 import '../Doctor/doctor_sidebar.dart';
 import '../Student/student_sidebar.dart';
@@ -496,19 +497,41 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             .format(DateTime.fromMillisecondsSinceEpoch(exam['timestamp']))
         : _translate(context, 'unknown');
 
+    final bool isLargeScreen = MediaQuery.of(context).size.width >= 900;
+    final Color primaryColor = const Color(0xFF2A7A94);
+    final Color accentColor = const Color(0xFF4AB8D8);
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => Scaffold(
           appBar: AppBar(
+            automaticallyImplyLeading: false, // لا تظهر سهم الرجوع
             title: Text(
               _translate(context, 'examination_details'),
-              style: const TextStyle(color: cardColor),
+              style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: primaryColor,
-            iconTheme: const IconThemeData(color: cardColor),
+            iconTheme: const IconThemeData(color: Colors.white),
+            elevation: 2,
+            centerTitle: true,
+            leading: null, // تأكيد عدم وجود أيقونة
+            actions: [], // تأكيد عدم وجود أيقونات يمين
           ),
           backgroundColor: backgroundColor,
+          drawer: (_userRole == 'dental_student'
+              ? StudentSidebar(
+                  studentName: _doctorName,
+                  studentImageUrl: _doctorImageUrl,
+                )
+              : DoctorSidebar(
+                  primaryColor: primaryColor,
+                  accentColor: accentColor,
+                  userName: _doctorName ?? '',
+                  userImageUrl: _doctorImageUrl,
+                  translate: (ctx, key) => key,
+                  parentContext: context,
+                )),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -595,6 +618,8 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                           _safeConvertMap(examData['dentalChart']), context),
                     ),
                 ],
+                // إضافة كارد صورة الأشعة بعد كل بيانات الفحص
+                _buildXrayImageCard(patientExam, context),
               ],
             ),
           ),
@@ -851,14 +876,12 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     if (snapshot.exists) {
       final data = snapshot.value as Map<dynamic, dynamic>;
       final role = data['role']?.toString() ?? data['type']?.toString();
+      final firstName = data['firstName']?.toString().trim() ?? '';
+      final fatherName = data['fatherName']?.toString().trim() ?? '';
+      final grandfatherName = data['grandfatherName']?.toString().trim() ?? '';
+      final familyName = data['familyName']?.toString().trim() ?? '';
+      final fullName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
       if (role == 'dental_student') {
-        final firstName = data['firstName'] ?? '';
-        final fatherName = data['fatherName'] ?? '';
-        final grandfatherName = data['grandfatherName'] ?? '';
-        final familyName = data['familyName'] ?? '';
-        final fullName = [firstName, fatherName, grandfatherName, familyName]
-            .where((part) => part.toString().isNotEmpty)
-            .join(' ');
         final imageUrl = data['imageUrl']?.toString() ?? '';
         setState(() {
           _doctorName = fullName.isNotEmpty ? fullName : 'الطالب';
@@ -866,13 +889,6 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           _userRole = role;
         });
       } else {
-        final firstName = data['firstName'] ?? '';
-        final fatherName = data['fatherName'] ?? '';
-        final grandfatherName = data['grandfatherName'] ?? '';
-        final familyName = data['familyName'] ?? '';
-        final fullName = [firstName, fatherName, grandfatherName, familyName]
-            .where((part) => part.toString().isNotEmpty)
-            .join(' ');
         final imageData = data['image']?.toString() ?? '';
         setState(() {
           _doctorName = fullName.isNotEmpty ? fullName : null;
@@ -882,11 +898,158 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
       }
     } else {
       setState(() {
-        _doctorName = 'الطالب';
+        _doctorName = null;
         _doctorImageUrl = null;
         _userRole = null;
       });
     }
+  }
+
+  // كاش مؤقت لصور الأشعة
+  Map<String, String?> _xrayImageCache = {};
+
+  // جلب صورة الأشعة من xray_images حسب patientId أو idNumber
+  Future<String?> _getXrayImageForPatient(String? patientId, String? idNumber) async {
+    final String cacheKey = patientId ?? idNumber ?? '';
+    if (_xrayImageCache.containsKey(cacheKey)) {
+      return _xrayImageCache[cacheKey];
+    }
+    final ref = FirebaseDatabase.instance.ref('xray_images');
+    final snapshot = await ref.get();
+    if (!snapshot.exists) return null;
+    final data = snapshot.value as Map<dynamic, dynamic>?;
+    if (data == null) return null;
+    for (final entry in data.entries) {
+      final value = entry.value;
+      if (value is Map<dynamic, dynamic>) {
+        final map = Map<String, dynamic>.from(value);
+        if ((patientId != null && map['patientId']?.toString() == patientId) ||
+            (idNumber != null && map['idNumber']?.toString() == idNumber)) {
+          final xrayImage = map['xrayImage']?.toString();
+          _xrayImageCache[cacheKey] = xrayImage;
+          return xrayImage;
+        }
+      }
+    }
+    _xrayImageCache[cacheKey] = null;
+    return null;
+  }
+
+  // كارد صورة الأشعة (يبحث في xray_images)
+  Widget _buildXrayImageCard(Map<String, dynamic> patientExam, BuildContext context) {
+    final patient = _safeConvertMap(patientExam['patient']);
+    final String? patientId = patient['id']?.toString();
+    final String? idNumber = patient['idNumber']?.toString();
+    final String cacheKey = patientId ?? idNumber ?? '';
+
+    return FutureBuilder<String?>(
+      future: _getXrayImageForPatient(patientId, idNumber),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final String? xrayBase64 = snapshot.data;
+        if (xrayBase64 == null || xrayBase64.isEmpty) {
+          return Card(
+            margin: const EdgeInsets.all(16),
+            color: cardColor,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(Icons.image_not_supported, color: textSecondary),
+                  SizedBox(width: 12),
+                  Text(
+                    'لا توجد صورة أشعة مرفوعة',
+                    style: const TextStyle(color: textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        try {
+          final bytes = base64Decode(xrayBase64);
+          return Card(
+            margin: const EdgeInsets.all(16),
+            color: cardColor,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'صورة الأشعة',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        backgroundColor: Colors.transparent,
+                        child: InteractiveViewer(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              color: Colors.white,
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.memory(
+                                bytes,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ); // تصحيح: إزالة الفاصلة المنقوطة الزائدة
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    width: double.infinity,
+                    height: 250,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Text('تعذر تحميل صورة الأشعة', style: const TextStyle(color: errorColor)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        } catch (e) {
+          return Card(
+            margin: const EdgeInsets.all(16),
+            color: cardColor,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('تعذر عرض صورة الأشعة', style: const TextStyle(color: errorColor)),
+            ),
+          );
+        }
+      },
+    );
   }
 
   @override
@@ -895,71 +1058,53 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     final Color primaryColor = const Color(0xFF2A7A94);
     final Color accentColor = const Color(0xFF4AB8D8);
     return Scaffold(
-      appBar: AppBar(title: const Text('المرضى المفحوصين')),
-      drawer: !isLargeScreen
-          ? (_userRole == 'dental_student'
-              ? StudentSidebar(
-                  studentName: _doctorName,
-                  studentImageUrl: _doctorImageUrl,
-                )
-              : DoctorSidebar(
-                  primaryColor: primaryColor,
-                  accentColor: accentColor,
-                  userName: _doctorName ?? '',
-                  userImageUrl: _doctorImageUrl,
-                  translate: (ctx, key) => key,
-                  parentContext: context,
-                ))
-          : null,
+      appBar: AppBar(
+        title: Text(_translate(context, 'examined_patients')),
+        backgroundColor: primaryColor, // جعل لون الاب بار نفس اللون الاساسي
+      ),
+      drawer: (_userRole == 'dental_student'
+          ? StudentSidebar(
+              studentName: _doctorName,
+              studentImageUrl: _doctorImageUrl,
+            )
+          : DoctorSidebar(
+              primaryColor: primaryColor,
+              accentColor: accentColor,
+              userName: _doctorName ?? '',
+              userImageUrl: _doctorImageUrl,
+              translate: (ctx, key) => key,
+              parentContext: context,
+            )),
       body: Stack(
         children: [
-          if (isLargeScreen)
-            Container(
-              width: 260,
-              child: (_userRole == 'dental_student'
-                  ? StudentSidebar(
-                      studentName: _doctorName,
-                      studentImageUrl: _doctorImageUrl,
-                    )
-                  : DoctorSidebar(
-                      primaryColor: primaryColor,
-                      accentColor: accentColor,
-                      userName: _doctorName ?? '',
-                      userImageUrl: _doctorImageUrl,
-                      translate: (ctx, key) => key,
-                      collapsed: true,
-                      parentContext: context,
-                    )),
-            ),
-          Padding(
-            padding: EdgeInsets.only(right: isLargeScreen ? 260 : 0),
-            child: Column(
-              children: [
-                _buildSearchField(),
-                Expanded(
-                  child: _isLoading
-                      ? Center(
-                          child: CircularProgressIndicator(color: primaryColor),
-                        )
-                      : _hasError
-                          ? _buildErrorWidget()
-                          : _filteredExaminations.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    _translate(context, 'no_patients'),
-                                    style: const TextStyle(color: textSecondary),
-                                  ),
-                                )
-                              : ListView.builder(
-                                  itemCount: _filteredExaminations.length,
-                                  itemBuilder: (context, index) {
-                                    return _buildPatientCard(
-                                        _filteredExaminations[index], context);
-                                  },
+          Column(
+            children: [
+              _buildSearchField(),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(color: primaryColor),
+                      )
+                    : _hasError
+                        ? _buildErrorWidget()
+                        : _filteredExaminations.isEmpty
+                            ? Center(
+                                child: Text(
+                                  _translate(context, 'no_patients'),
+                                  style: const TextStyle(color: textSecondary),
                                 ),
-                ),
-              ],
-            ),
+                              )
+                            : ListView.builder(
+                                itemCount: _filteredExaminations.length,
+                                itemBuilder: (context, index) {
+                                  return _buildPatientCard(
+                                      _filteredExaminations[index], context);
+                                },
+                              ),
+              ),
+              // كارد صورة الأشعة في أسفل الصفحة
+              // تم حذف كارد صورة الأشعة من قائمة المرضى ليظهر فقط في تفاصيل المريض
+            ],
           ),
         ],
       ),

@@ -136,6 +136,8 @@ class PatientProfilePage extends StatelessWidget {
       drawer: PatientSidebar(
         onNavigate: (route) => _handleSidebarNavigation(context, route),
         currentRoute: '/patient_profile',
+        patientName: fullName,
+        patientImageUrl: patientImageUrl,
       ),
       body: Container(
         width: double.infinity,

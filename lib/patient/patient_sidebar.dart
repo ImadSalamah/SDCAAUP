@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
 import '../loginpage.dart';
+import 'dart:convert';
 
 class PatientSidebar extends StatelessWidget {
   final Function(String route) onNavigate;
   final String currentRoute;
+  final String patientName;
+  final String patientImageUrl;
 
   const PatientSidebar({
     Key? key,
     required this.onNavigate,
     required this.currentRoute,
+    required this.patientName,
+    required this.patientImageUrl,
   }) : super(key: key);
 
   @override
@@ -25,23 +30,30 @@ class PatientSidebar extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: primaryColor,
+            UserAccountsDrawerHeader(
+              decoration: BoxDecoration(color: primaryColor),
+              currentAccountPicture: patientImageUrl.isNotEmpty
+                  ? CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: ClipOval(
+                        child: Image.memory(
+                          base64.decode(patientImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    )
+                  : const CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.person, color: Color(0xFF2A7A94), size: 36),
+                    ),
+              accountName: Text(
+                patientName.isNotEmpty ? patientName : (isArabic ? 'مريض' : 'Patient'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                overflow: TextOverflow.ellipsis,
               ),
-              child: Center(
-                child: Text(
-                  isArabic
-                      ? 'مرحبا بك في لوحة المريض'
-                      : 'Welcome to Patient Panel',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              accountEmail: null,
             ),
             _buildSidebarItem(
               context,

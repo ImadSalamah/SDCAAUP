@@ -422,9 +422,9 @@ class _LoginPageState extends State<LoginPage> {
                 : 'هناك مشكلة في بيانات الحساب');
         break;
       default:
-        errorMessage = '${_translate(context, 'login_error')} (${e.code})';
+        errorMessage = _translate(context, 'login_error');
+        break;
     }
-
     _showErrorSnackbar(context, errorMessage);
   }
 

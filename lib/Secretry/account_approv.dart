@@ -24,6 +24,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   List<Map<String, dynamic>> _pendingUsers = [];
+  List<Map<String, dynamic>> _pendingAccounts = [];
   bool _isLoading = true;
   String _userName = '';
   String _userImageUrl = '';
@@ -38,6 +39,9 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   Map<String, dynamic>? _rejectingUser;
   List<String> _selectedFields = [];
   bool _rejectAll = true;
+
+  // New: Which list to show
+  bool _showPendingUsers = true;
 
   final Map<String, Map<String, String>> _translations = const {
     'approval_title': {'ar': 'الموافقة على الحسابات', 'en': 'Account Approval'},
@@ -126,9 +130,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   Future<void> _loadPendingUsers() async {
     try {
       setState(() => _isLoading = true);
-      // read from pendingUsers instead of pendingAccounts
       final snapshot = await _database.child('pendingUsers').once();
-
       if (snapshot.snapshot.value == null) {
         if (mounted) {
           setState(() {
@@ -138,10 +140,8 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         }
         return;
       }
-
       final usersMap = snapshot.snapshot.value as Map<dynamic, dynamic>? ?? {};
       final usersList = <Map<String, dynamic>>[];
-
       usersMap.forEach((key, value) {
         try {
           final userData =
@@ -152,7 +152,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           debugPrint('Error parsing user data: $e');
         }
       });
-
       if (mounted) {
         setState(() {
           _pendingUsers = usersList;
@@ -161,6 +160,47 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
       }
     } catch (e) {
       debugPrint('Error loading pending users: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_translate('error')}: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadPendingAccounts() async {
+    try {
+      setState(() => _isLoading = true);
+      final snapshot = await _database.child('pendingAccounts').once();
+      if (snapshot.snapshot.value == null) {
+        if (mounted) {
+          setState(() {
+            _pendingAccounts = [];
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+      final usersMap = snapshot.snapshot.value as Map<dynamic, dynamic>? ?? {};
+      final usersList = <Map<String, dynamic>>[];
+      usersMap.forEach((key, value) {
+        try {
+          final userData = Map<String, dynamic>.from(value as Map<dynamic, dynamic>);
+          userData['userId'] = key.toString();
+          usersList.add(userData);
+        } catch (e) {
+          debugPrint('Error parsing pending account: $e');
+        }
+      });
+      if (mounted) {
+        setState(() {
+          _pendingAccounts = usersList;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading pending accounts: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -232,7 +272,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_translate('rejection_success'))),
         );
-        _loadPendingUsers();
+        _loadPendingUsers(); // إعادة تفعيل تحديث القائمة بعد الرفض
       }
     } catch (e) {
       debugPrint('Error rejecting user: $e');
@@ -254,7 +294,8 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         throw Exception('Missing userId or authUid');
       }
 
-      await _database.child('pendingAccounts/$userId').remove();
+      // الصحيح: احذف من pendingUsers وليس pendingAccounts
+      await _database.child('pendingUsers/$userId').remove();
 
       await _database.child('pendingAccounts/$userId').set({
         ...userData,
@@ -270,6 +311,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           SnackBar(content: Text(_translate('rejection_success'))),
         );
         _loadPendingUsers();
+        _loadPendingAccounts();
       }
     } catch (e) {
       debugPrint('Error rejecting user with fields: $e');
@@ -716,8 +758,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    final isLargeScreen = MediaQuery.of(context).size.width >= 800;
-
     return Directionality(
       textDirection:
           languageProvider.isEnglish ? TextDirection.ltr : TextDirection.rtl,
@@ -727,50 +767,71 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           title: Text(_translate('approval_title')),
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            ),
+          ),
         ),
-        drawer: isLargeScreen
-            ? null
-            : SecretarySidebar(
-                primaryColor: primaryColor,
-                accentColor: accentColor,
-                userName: _userName.isNotEmpty ? _userName : null,
-                userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : null,
-                onLogout: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                  );
-                },
-                parentContext: context,
-                collapsed: false,
-                translate: (ctx, key) => _translate(key),
-                pendingAccountsCount: _pendingUsers.length,
-                userRole: 'secretary',
-              ),
-        body: isLargeScreen
-            ? Row(
+        drawer: SecretarySidebar(
+          primaryColor: primaryColor,
+          accentColor: accentColor,
+          userName: _userName.isNotEmpty ? _userName : null,
+          userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : null,
+          onLogout: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          },
+          parentContext: context,
+          collapsed: false,
+          translate: (ctx, key) => _translate(key),
+          pendingAccountsCount: _pendingUsers.length,
+          userRole: 'secretary',
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              child: Row(
                 children: [
-                  SecretarySidebar(
-                    primaryColor: primaryColor,
-                    accentColor: accentColor,
-                    userName: _userName.isNotEmpty ? _userName : null,
-                    userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : null,
-                    onLogout: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginPage()),
-                      );
-                    },
-                    parentContext: context,
-                    collapsed: false,
-                    translate: (ctx, key) => _translate(key),
-                    pendingAccountsCount: _pendingUsers.length,
-                    userRole: 'secretary',
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _showPendingUsers ? primaryColor : Colors.grey[300],
+                        foregroundColor: _showPendingUsers ? Colors.white : Colors.black,
+                      ),
+                      onPressed: () async {
+                        setState(() => _showPendingUsers = true);
+                        await _loadPendingUsers();
+                      },
+                      child: Text(languageProvider.isEnglish ? 'New Accounts' : 'الحسابات الجديدة'),
+                    ),
                   ),
-                  Expanded(child: _buildMainContent()),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !_showPendingUsers ? primaryColor : Colors.grey[300],
+                        foregroundColor: !_showPendingUsers ? Colors.white : Colors.black,
+                      ),
+                      onPressed: () async {
+                        setState(() => _showPendingUsers = false);
+                        await _loadPendingAccounts();
+                      },
+                      child: Text(languageProvider.isEnglish ? 'Needs Edit' : 'بحاجة لتعديل'),
+                    ),
+                  ),
                 ],
-              )
-            : _buildMainContent(),
+              ),
+            ),
+            Expanded(child: _buildMainContent()),
+          ],
+        ),
       ),
     );
   }
@@ -779,19 +840,20 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_pendingUsers.isEmpty) {
+    final list = _showPendingUsers ? _pendingUsers : _pendingAccounts;
+    if (list.isEmpty) {
       return Center(
         child: Text(
-          _translate('no_pending_users'),
+          _showPendingUsers ? _translate('no_pending_users') : 'لا يوجد حسابات بحاجة لتعديل',
           style: TextStyle(fontSize: 18, color: Colors.grey[600]),
         ),
       );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _pendingUsers.length,
+      itemCount: list.length,
       itemBuilder: (context, index) {
-        return _buildUserCard(_pendingUsers[index]);
+        return _buildUserCard(list[index]);
       },
     );
   }

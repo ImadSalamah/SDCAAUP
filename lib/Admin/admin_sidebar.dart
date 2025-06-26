@@ -155,7 +155,7 @@ class AdminSidebar extends StatelessWidget {
               ),
             );
           }),
-          _buildSidebarItem(context, icon: Icons.group, label: translate(context, 'manage_study_groups'), onTap: () {
+          _buildSidebarItem(context, icon: Icons.group, label: _translate(context, 'manage_study_groups'), onTap: () {
             Navigator.pop(context);
             Navigator.push(
               parentContext,
@@ -169,9 +169,8 @@ class AdminSidebar extends StatelessWidget {
               ),
             );
           }),
-          _buildSidebarItem(context, icon: Icons.settings, label: translate(context, 'settings'), onTap: () {}),
           const Divider(),
-          _buildSidebarItem(context, icon: Icons.logout, label: translate(context, 'logout'), onTap: onLogout, iconColor: Colors.red),
+          // تم حذف عنصر تسجيل الخروج من السايد بار
         ],
       ),
     );
@@ -180,7 +179,12 @@ class AdminSidebar extends StatelessWidget {
   Widget _buildSidebarItem(BuildContext context, {required IconData icon, required String label, VoidCallback? onTap, Color? iconColor}) {
     return ListTile(
       leading: Icon(icon, color: iconColor ?? primaryColor),
-      title: collapsed ? null : Text(label),
+      title: collapsed
+          ? null
+          : Text(
+              label,
+              style: const TextStyle(color: Colors.black), // لون الخط أسود
+            ),
       onTap: onTap,
       contentPadding: collapsed ? const EdgeInsets.symmetric(horizontal: 12) : null,
       minLeadingWidth: 0,

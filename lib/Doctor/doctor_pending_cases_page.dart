@@ -227,63 +227,51 @@ class _DoctorPendingCasesPageState extends State<DoctorPendingCasesPage> {
       return translations[key]?[languageProvider.currentLocale.languageCode] ?? key;
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('الحالات المعلقة - طب أسنان الأطفال')),
-      drawer: !isLargeScreen
-          ? DoctorSidebar(
-              primaryColor: primaryColor,
-              accentColor: accentColor,
-              userName: _doctorName ?? '',
-              userImageUrl: _doctorImageUrl,
-              translate: _translate,
-              onLogout: _logout,
-              parentContext: context,
-            )
-          : null,
-      body: Stack(
-        children: [
-          if (isLargeScreen)
-            Container(
-              width: 260,
-              child: DoctorSidebar(
-                primaryColor: primaryColor,
-                accentColor: accentColor,
-                userName: _doctorName ?? '',
-                userImageUrl: _doctorImageUrl,
-                translate: _translate,
-                collapsed: true,
-                onLogout: _logout,
-                parentContext: context,
-              ),
-            ),
-          Padding(
-            padding: EdgeInsets.only(right: isLargeScreen ? 260 : 0),
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : pendingCases.isEmpty
-                    ? const Center(child: Text('لا يوجد حالات معلقة'))
-                    : ListView.builder(
-                        itemCount: pendingCases.length,
-                        itemBuilder: (context, index) {
-                          final caseData = pendingCases[index];
-                          final locked = caseData['_locked'] == true;
-                          return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            color: locked ? Colors.grey[200] : null,
-                            child: ListTile(
-                              title: Text('طالب: ${caseData['studentName'] ?? caseData['studentId']}'),
-                              subtitle: Text(
-                                'تاريخ الإرسال: ${DateTime.fromMillisecondsSinceEpoch(caseData['submittedAt']).toString().substring(0, 16)}',
-                              ),
-                              trailing: locked
-                                  ? const Icon(Icons.lock, color: Colors.grey)
-                                  : const Icon(Icons.chevron_right),
-                              onTap: locked ? null : () => _showCaseDialog(caseData),
-                            ),
-                          );
-                        },
-                      ),
-          ),
-        ],
+      appBar: AppBar(
+        title: Text(
+          languageProvider.currentLocale.languageCode == 'ar'
+              ? 'الحالات المعلقة'
+              : 'Pending Cases',
+        ),
+        backgroundColor: primaryColor, // Set app bar color to primaryColor
+      ),
+      drawer: DoctorSidebar(
+        primaryColor: primaryColor,
+        accentColor: accentColor,
+        userName: _doctorName ?? '',
+        userImageUrl: _doctorImageUrl,
+        translate: _translate,
+        collapsed: false, // Always show labels (expanded)
+        onLogout: _logout,
+        parentContext: context,
+      ),
+      body: Padding(
+        padding: EdgeInsets.only(right: 0),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : pendingCases.isEmpty
+                ? const Center(child: Text('لا يوجد حالات معلقة'))
+                : ListView.builder(
+                    itemCount: pendingCases.length,
+                    itemBuilder: (context, index) {
+                      final caseData = pendingCases[index];
+                      final locked = caseData['_locked'] == true;
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        color: locked ? Colors.grey[200] : null,
+                        child: ListTile(
+                          title: Text('طالب: ${caseData['studentName'] ?? caseData['studentId']}'),
+                          subtitle: Text(
+                            'تاريخ الإرسال: ${DateTime.fromMillisecondsSinceEpoch(caseData['submittedAt']).toString().substring(0, 16)}',
+                          ),
+                          trailing: locked
+                              ? const Icon(Icons.lock, color: Colors.grey)
+                              : const Icon(Icons.chevron_right),
+                          onTap: locked ? null : () => _showCaseDialog(caseData),
+                        ),
+                      );
+                    },
+                  ),
       ),
     );
   }

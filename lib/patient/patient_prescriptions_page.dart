@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'dart:convert';
 import 'patient_sidebar.dart';
 import '../dashboard/patient_dashboard.dart';
 import 'patient_profile_page.dart';
@@ -16,11 +17,38 @@ class PatientPrescriptionsPage extends StatefulWidget {
 class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
   List<Map<dynamic, dynamic>> prescriptions = [];
   bool isLoading = true;
+  String patientName = '';
+  String patientImageUrl = '';
+  bool patientInfoLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadPrescriptions();
+    _loadPatientInfo();
+  }
+
+  void _loadPatientInfo() async {
+    final userSnap = await FirebaseDatabase.instance.ref('users/${widget.patientId}').get();
+    if (userSnap.exists && userSnap.value != null) {
+      final userData = Map<String, dynamic>.from(userSnap.value as Map);
+      final firstName = userData['firstName']?.toString().trim() ?? '';
+      final fatherName = userData['fatherName']?.toString().trim() ?? '';
+      final grandfatherName = userData['grandfatherName']?.toString().trim() ?? '';
+      final familyName = userData['familyName']?.toString().trim() ?? '';
+      setState(() {
+        patientName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
+        final imageData = userData['image']?.toString() ?? '';
+        patientImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
+        patientInfoLoading = false;
+      });
+    } else {
+      setState(() {
+        patientName = '';
+        patientImageUrl = '';
+        patientInfoLoading = false;
+      });
+    }
   }
 
   void _loadPrescriptions() async {
@@ -119,90 +147,116 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).languageCode;
     String t(String ar, String en) => locale == 'ar' ? ar : en;
+    final Color primaryColor = const Color(0xFF2A7A94);
     return Scaffold(
-      appBar: AppBar(title: Text(t('الوصفات الطبية', 'Prescriptions'))),
+      appBar: AppBar(
+        title: Text(t('الوصفات الطبية', 'Prescriptions'), style: const TextStyle(color: Colors.white)),
+        backgroundColor: primaryColor,
+        centerTitle: true,
+        elevation: 0,
+      ),
       drawer: PatientSidebar(
         onNavigate: _handleSidebarNavigation,
         currentRoute: '/patient_prescriptions',
+        patientName: patientName,
+        patientImageUrl: patientImageUrl,
       ),
-      backgroundColor: Colors.white,
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : prescriptions.isEmpty
-              ? Center(child: Text(t('لا توجد وصفات طبية', 'No prescriptions found')))
-              : ListView.builder(
-                  itemCount: prescriptions.length,
-                  itemBuilder: (context, index) {
-                    final p = prescriptions[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      color: Colors.white,
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(t('الدواء:', 'Medicine:'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    p['medicine']?.toString() ?? '-',
-                                    style: const TextStyle(fontSize: 16),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Text(t('وقت الاستخدام:', 'Usage time:'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(p['time']?.toString() ?? '-', style: const TextStyle(fontSize: 15)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Text(t('تاريخ الإضافة:', 'Added on:'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _formatDate(p['createdAt']),
-                                    style: const TextStyle(fontSize: 15, color: Colors.grey),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Text(t('اسم الدكتور:', 'Doctor:'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    p['doctorName']?.toString() ?? '-',
-                                    style: const TextStyle(fontSize: 15),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [Color(0xFFe0f7fa), Color(0xFFffffff)],
+          ),
+        ),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : prescriptions.isEmpty
+                ? Center(child: Text(t('لا توجد وصفات طبية', 'No prescriptions found'), style: const TextStyle(fontSize: 18, color: Colors.black54)))
+                : ListView.separated(
+                    itemCount: prescriptions.length,
+                    separatorBuilder: (context, index) => Divider(thickness: 1.2, color: Colors.grey.shade200, height: 16),
+                    itemBuilder: (context, index) {
+                      final p = prescriptions[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        color: Colors.white,
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          side: BorderSide(color: Colors.grey.shade200),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(18.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.medication, color: primaryColor, size: 22),
+                                  const SizedBox(width: 8),
+                                  Text(t('الدواء:', 'Medicine:'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryColor)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      p['medicine']?.toString() ?? '-',
+                                      style: const TextStyle(fontSize: 16),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time, color: primaryColor, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(t('وقت الاستخدام:', 'Usage time:'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(p['time']?.toString() ?? '-', style: const TextStyle(fontSize: 15)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today, color: primaryColor, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(t('تاريخ الإضافة:', 'Added on:'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _formatDate(p['createdAt']),
+                                      style: const TextStyle(fontSize: 15, color: Colors.grey),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(Icons.person, color: primaryColor, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(t('اسم الدكتور:', 'Doctor:'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      p['doctorName']?.toString() ?? '-',
+                                      style: const TextStyle(fontSize: 15),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+      ),
     );
   }
 }

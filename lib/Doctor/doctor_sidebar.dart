@@ -6,6 +6,8 @@ import '../Doctor/doctor_pending_cases_page.dart';
 import '../Doctor/groups_page.dart';
 import '../Doctor/examined_patients_page.dart';
 import '../dashboard/doctor_dashboard.dart';
+import 'prescription_page.dart';
+import 'doctor_xray_request_page.dart';
 
 class DoctorSidebar extends StatelessWidget {
   final Color primaryColor;
@@ -31,12 +33,22 @@ class DoctorSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Sidebar labels in both Arabic and English
+    final sidebarLabels = [
+      {'ar': 'الرئيسية', 'en': 'Home'},
+      {'ar': 'قائمة الانتظار', 'en': 'Waiting List'},
+      {'ar': 'تقييم الطلاب', 'en': 'Student Evaluation'},
+      {'ar': 'مجموعات الإشراف', 'en': 'Supervision Groups'},
+      {'ar': 'المرضى المفحوصين', 'en': 'Examined Patients'},
+    ];
+    // Detect language (you can adjust this logic as needed)
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+
     double sidebarWidth = collapsed ? 60 : 260;
     if (MediaQuery.of(context).size.width < 700 && !collapsed) {
       sidebarWidth = 200;
     }
-    final isDrawer = Scaffold.maybeOf(context)?.isDrawerOpen ?? false;
-    const textColor = Colors.white;
+
     return Drawer(
       child: Container(
         width: sidebarWidth,
@@ -49,28 +61,35 @@ class DoctorSidebar extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  userImageUrl != null && userImageUrl!.isNotEmpty
-                      ? CircleAvatar(
-                          radius: collapsed ? 18 : 32,
-                          backgroundColor: Colors.white,
-                          child: ClipOval(
-                            child: Image.memory(
-                              base64Decode(userImageUrl!.replaceFirst('data:image/jpeg;base64,', '')),
-                              width: collapsed ? 36 : 64,
-                              height: collapsed ? 36 : 64,
-                              fit: BoxFit.cover,
+                  if (userImageUrl != null && userImageUrl!.isNotEmpty)
+                    userImageUrl!.startsWith('http') || userImageUrl!.startsWith('https')
+                        ? CircleAvatar(
+                            radius: collapsed ? 18 : 32,
+                            backgroundColor: Colors.white,
+                            backgroundImage: NetworkImage(userImageUrl!),
+                          )
+                        : CircleAvatar(
+                            radius: collapsed ? 18 : 32,
+                            backgroundColor: Colors.white,
+                            child: ClipOval(
+                              child: Image.memory(
+                                base64Decode(userImageUrl!.replaceFirst('data:image/jpeg;base64,', '')),
+                                width: collapsed ? 36 : 64,
+                                height: collapsed ? 36 : 64,
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                          ),
-                        )
-                      : CircleAvatar(
-                          radius: collapsed ? 18 : 32,
-                          backgroundColor: Colors.white,
-                          child: Icon(Icons.person, size: collapsed ? 18 : 32, color: accentColor),
-                        ),
+                          )
+                  else
+                    CircleAvatar(
+                      radius: collapsed ? 18 : 32,
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.person, size: collapsed ? 18 : 32, color: accentColor),
+                    ),
                   if (!collapsed) ...[
                     const SizedBox(height: 10),
                     Text(
-                      userName ?? translate(context, 'supervisor'),
+                      userName ?? (isArabic ? 'دكتور' : 'Doctor'),
                       style: const TextStyle(
                         fontSize: 16,
                         color: Colors.white,
@@ -82,14 +101,14 @@ class DoctorSidebar extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      translate(context, 'supervisor'),
+                      isArabic ? 'دكتور' : 'Doctor',
                       style: const TextStyle(fontSize: 14, color: Colors.white),
                     ),
                   ],
                 ],
               ),
             ),
-            _buildSidebarItem(context, icon: Icons.home, label: 'الرئيسية', onTap: () {
+            _buildSidebarItem(context, icon: Icons.home, label: isArabic ? sidebarLabels[0]['ar']! : sidebarLabels[0]['en']!, onTap: () {
               Navigator.pop(context);
               Navigator.pushAndRemoveUntil(
                 parentContext,
@@ -97,36 +116,48 @@ class DoctorSidebar extends StatelessWidget {
                 (route) => false,
               );
             }),
-            _buildSidebarItem(context, icon: Icons.list_alt, label: 'قائمة الانتظار', onTap: () {
+            _buildSidebarItem(context, icon: Icons.list_alt, label: isArabic ? sidebarLabels[1]['ar']! : sidebarLabels[1]['en']!, onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(
+              Navigator.push(
                 parentContext,
                 MaterialPageRoute(builder: (_) => const WaitingListPage(userRole: 'doctor')),
               );
             }),
-            _buildSidebarItem(context, icon: Icons.school, label: 'تقييم الطلاب', onTap: () {
+            _buildSidebarItem(context, icon: Icons.school, label: isArabic ? sidebarLabels[2]['ar']! : sidebarLabels[2]['en']!, onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(
+              Navigator.push(
                 parentContext,
                 MaterialPageRoute(builder: (_) => const DoctorPendingCasesPage()),
               );
             }),
-            _buildSidebarItem(context, icon: Icons.group, label: 'مجموعات الإشراف', onTap: () {
+            _buildSidebarItem(context, icon: Icons.group, label: isArabic ? sidebarLabels[3]['ar']! : sidebarLabels[3]['en']!, onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(
+              Navigator.push(
                 parentContext,
                 MaterialPageRoute(builder: (_) => const DoctorGroupsPage()),
               );
             }),
-            _buildSidebarItem(context, icon: Icons.check_circle, label: 'المرضى المفحوصين', onTap: () {
+            _buildSidebarItem(context, icon: Icons.check_circle, label: isArabic ? sidebarLabels[4]['ar']! : sidebarLabels[4]['en']!, onTap: () {
               Navigator.pop(context);
-              Navigator.pushReplacement(
+              Navigator.push(
                 parentContext,
                 MaterialPageRoute(builder: (_) => const ExaminedPatientsPage()),
               );
             }),
-            const Divider(),
-            _buildSidebarItem(context, icon: Icons.logout, label: 'تسجيل الخروج', onTap: onLogout, iconColor: Colors.red),
+            _buildSidebarItem(context, icon: Icons.medical_services, label: isArabic ? 'الوصفة الطبية' : 'Prescription', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (_) => PrescriptionPage(isArabic: isArabic)),
+              );
+            }),
+            _buildSidebarItem(context, icon: Icons.wb_iridescent, label: isArabic ? 'طلب أشعة' : 'Radiology Request', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (_) => DoctorXrayRequestPage()),
+              );
+            }),
           ],
         ),
       ),

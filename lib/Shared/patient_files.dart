@@ -273,6 +273,43 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
     return null;
   }
 
+  Future<void> _addToWaitingList(Map<String, dynamic> user) async {
+    try {
+      // يمكنك تخصيص الحقول حسب الحاجة
+      final waitingUser = {
+        'name': _getFullName(user), // الاسم الرباعي
+        'phone': user['phone'] ?? '',
+        'id': user['id'] ?? '',
+        'addedAt': DateTime.now().millisecondsSinceEpoch,
+      };
+      await _waitingListRef.child(user['id']).set(waitingUser);
+      await _loadData(); // إعادة تحميل البيانات لتحديث الواجهة
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_translate(context, 'تمت الإضافة إلى قائمة الانتظار'))),
+      );
+    } catch (e) {
+      debugPrint('Error adding to waiting list: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_translate(context, 'error_loading'))),
+      );
+    }
+  }
+
+  Future<void> _removeFromWaitingList(String userId) async {
+    try {
+      await _waitingListRef.child(userId).remove();
+      await _loadData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_translate(context, 'remove_from_waiting_list'))),
+      );
+    } catch (e) {
+      debugPrint('Error removing from waiting list: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_translate(context, 'error_loading'))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLargeScreen = MediaQuery.of(context).size.width >= 900;
@@ -291,31 +328,6 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
             ? const Center(child: CircularProgressIndicator())
             : Row(
                 children: [
-                  if (isLargeScreen)
-                    Container(
-                      width: 250,
-                      color: primaryColor.withOpacity(0.08),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 32),
-                          Icon(Icons.folder_shared, size: 48, color: primaryColor),
-                          const SizedBox(height: 10),
-                          Text('ملفات المرضى', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18)),
-                          const Divider(),
-                          ListTile(
-                            leading: Icon(Icons.home, color: primaryColor),
-                            title: const Text('الرئيسية'),
-                            onTap: () {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (context) => const StudentDashboard()),
-                                (route) => false,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -339,25 +351,35 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
                               children: [
                                 Text(_translate(context, 'all_patients'), style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor)),
                                 const SizedBox(height: 8),
-                                ...filteredUsers.map((user) => Card(
-                                      color: Colors.white,
-                                      elevation: 2,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                      child: ListTile(
-                                        leading: CircleAvatar(
-                                          backgroundColor: accentColor,
-                                          child: Icon(Icons.person, color: Colors.white),
-                                        ),
-                                        title: Text(_getFullName(user), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
-                                        subtitle: Text('${_translate(context, 'age')}: ${_formatAge(context, user['birthDate'])}'),
-                                        trailing: IconButton(
-                                          icon: const Icon(Icons.add, color: Colors.green),
-                                          onPressed: () {
-                                            // Add to waiting list logic
-                                          },
-                                        ),
+                                ...filteredUsers.map((user) {
+                                  final isInWaitingList = waitingList.any((w) => w['id'] == user['id']);
+                                  return Card(
+                                    color: Colors.white,
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: accentColor,
+                                        child: Icon(Icons.person, color: Colors.white),
                                       ),
-                                    )),
+                                      title: Text(_getFullName(user), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                                      subtitle: Text('${_translate(context, 'age')}: ${_formatAge(context, user['birthDate'])}'),
+                                      trailing: isInWaitingList
+                                          ? IconButton(
+                                              icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                              onPressed: () {
+                                                _removeFromWaitingList(user['id']);
+                                              },
+                                            )
+                                          : IconButton(
+                                              icon: const Icon(Icons.add, color: Colors.green),
+                                              onPressed: () {
+                                                _addToWaitingList(user);
+                                              },
+                                            ),
+                                    ),
+                                  );
+                                }),
                                 const SizedBox(height: 24),
                                 Text(_translate(context, 'waiting_list'), style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor)),
                                 const SizedBox(height: 8),
@@ -375,7 +397,7 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
                                         trailing: IconButton(
                                           icon: const Icon(Icons.remove_circle, color: Colors.red),
                                           onPressed: () {
-                                            // Remove from waiting list logic
+                                            _removeFromWaitingList(user['id']);
                                           },
                                         ),
                                       ),

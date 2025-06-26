@@ -358,10 +358,14 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
         final bool isLargeScreen = constraints.maxWidth >= 900;
         final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
         final isRtl = languageProvider.currentLocale.languageCode == 'ar';
+        String titleText = widget.translate(context, 'manage_study_groups_title');
+        if (titleText == 'manage_study_groups_title') {
+          titleText = isRtl ? 'إدارة الشعب الدراسية' : 'Manage Study Groups';
+        }
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
-            title: const Text('إدارة الشعب السريرية'),
+            title: Text(titleText),
             backgroundColor: const Color(0xFF2A7A94),
             foregroundColor: Colors.white,
             automaticallyImplyLeading: false,
@@ -463,7 +467,8 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
                                   : _subjects.map<DropdownMenuItem<String>>((subject) {
                                       return DropdownMenuItem<String>(
                                         value: subject['name'] + ' (${subject['code']})',
-                                        child: Text(subject['name'] + ' (${subject['code']})'),
+                                        child: Text(subject['name'] + ' (${subject['code']})',
+                                        ),
                                       );
                                     }).toList(),
                               onChanged: _subjects.isEmpty

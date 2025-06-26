@@ -355,14 +355,6 @@ class _EditUserPageState extends State<EditUserPage> {
           title: Text(widget.translate(context, 'manage_users')),
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.language),
-              onPressed: () {
-                languageProvider.toggleLanguage();
-              },
-            ),
-          ],
         ),
         drawer: AdminSidebar(
           primaryColor: primaryColor,

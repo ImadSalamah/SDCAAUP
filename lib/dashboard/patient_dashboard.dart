@@ -398,6 +398,8 @@ class _PatientDashboardState extends State<PatientDashboard> {
           drawer: PatientSidebar(
             onNavigate: _handleSidebarNavigation,
             currentRoute: ModalRoute.of(context)?.settings.name ?? '/patient_dashboard',
+            patientName: _patientName,
+            patientImageUrl: _patientImageUrl,
           ),
           body: Builder(
             builder: (context) {

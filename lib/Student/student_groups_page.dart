@@ -115,7 +115,7 @@ class StudentGroupsPageState extends State<StudentGroupsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('شعبي الدراسية', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'شعبي الدراسية' : 'My Study Groups', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: primaryColor,
         centerTitle: true,
         leading: isRtl

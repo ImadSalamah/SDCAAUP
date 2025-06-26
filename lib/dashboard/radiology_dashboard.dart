@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../loginpage.dart';
+import '../radiology/xray_request_list_page.dart';
+import '../radiology/radiology_sidebar.dart';
 
 class RadiologyDashboard extends StatefulWidget {
   const RadiologyDashboard({super.key});
@@ -18,7 +20,9 @@ class RadiologyDashboard extends StatefulWidget {
 class _RadiologyDashboardState extends State<RadiologyDashboard> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   late DatabaseReference _waitingListRef;
+  late DatabaseReference _xrayWaitingListRef;
   List<Map<String, dynamic>> waitingPatients = [];
+  List<Map<String, dynamic>> xrayWaitingPatients = [];
   bool _isLoading = true;
   bool _hasError = false;
   String _userName = '';
@@ -27,12 +31,55 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
   final Color primaryColor = const Color(0xFF2A7A94);
   final Color accentColor = const Color(0xFF4AB8D8);
 
+  // قاموس النصوص متعدد اللغات
+  final Map<String, Map<String, String>> localizedStrings = {
+    'app_name': {
+      'ar': 'عيادات أسنان الجامعة العربية الأمريكية',
+      'en': 'Arab American University Dental Clinics',
+    },
+    'dashboard_title': {
+      'ar': 'الرئيسية',
+      'en': 'Home',
+    },
+    'waiting_list': {
+      'ar': 'قائمة الانتظار',
+      'en': 'Waiting List',
+    },
+    'change_language': {
+      'ar': 'تغيير اللغة',
+      'en': 'Change Language',
+    },
+    'logout': {
+      'ar': 'تسجيل الخروج',
+      'en': 'Logout',
+    },
+    'xray_technician': {
+      'ar': 'فني الأشعة',
+      'en': 'Radiology Technician',
+    },
+    'patient_details': {
+      'ar': 'تفاصيل المريض',
+      'en': 'Patient Details',
+    },
+    'patient_name': {
+      'ar': 'اسم المريض',
+      'en': 'Patient Name',
+    },
+    'file_number': {
+      'ar': 'رقم الملف',
+      'en': 'File Number',
+    },
+    // أضف المزيد حسب الحاجة
+  };
+
   @override
   void initState() {
     super.initState();
     _waitingListRef = FirebaseDatabase.instance.ref('radiology_waiting_list');
+    _xrayWaitingListRef = FirebaseDatabase.instance.ref('xray_waiting_list');
     _loadUserData();
     _loadWaitingPatients();
+    _loadXrayWaitingPatients();
   }
 
   Future<void> _loadUserData() async {
@@ -87,7 +134,272 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
     }
   }
 
-  void _showPatientDialog(Map<String, dynamic> patient) async {
+  Future<void> _loadXrayWaitingPatients() async {
+    try {
+      final snapshot = await _xrayWaitingListRef.get();
+      if (!snapshot.exists) {
+        setState(() {
+          xrayWaitingPatients = [];
+        });
+        return;
+      }
+      final data = snapshot.value as Map<dynamic, dynamic>? ?? {};
+      final List<Map<String, dynamic>> patients = [];
+      data.forEach((key, value) {
+        if (value is Map<dynamic, dynamic>) {
+          patients.add({
+            'id': key,
+            ...Map<String, dynamic>.from(value),
+          });
+        }
+      });
+      setState(() {
+        xrayWaitingPatients = patients;
+      });
+    } catch (e) {
+      // يمكن إضافة معالجة أخطاء 
+      //نا إذا لزم الأمر
+    }
+  }
+
+  Widget _buildUserInfoCard(BuildContext context, bool isSmallScreen, String lang, Map<String, Map<String, String>> localizedStrings) {
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width > 900;
+    final isTablet = width >= 600 && width <= 900;
+    return Container(
+      margin: const EdgeInsets.all(20),
+      width: double.infinity, // يأخذ كل عرض الشاشة
+      height: isSmallScreen
+          ? 180
+          : (isWide ? 240 : (isTablet ? 220 : 200)), // الطول متغير حسب حجم الشاشة
+      decoration: BoxDecoration(
+        image: const DecorationImage(
+          image: AssetImage('lib/assets/backgrownd.png'),
+          fit: BoxFit.cover,
+        ),
+        color: const Color(0x4D000000),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0x33000000),
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _userImageUrl.isNotEmpty
+                    ? CircleAvatar(
+                        radius: isSmallScreen
+                            ? 30
+                            : (isWide ? 55 : (isTablet ? 45 : 40)),
+                        backgroundColor: Colors.white.withOpacity(0.8),
+                        child: ClipOval(
+                          child: Image.memory(
+                            base64Decode(_userImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
+                            width: isSmallScreen
+                                ? 60
+                                : (isWide ? 110 : (isTablet ? 90 : 80)),
+                            height: isSmallScreen
+                                ? 60
+                                : (isWide ? 110 : (isTablet ? 90 : 80)),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      )
+                    : CircleAvatar(
+                        radius: isSmallScreen
+                            ? 30
+                            : (isWide ? 55 : (isTablet ? 45 : 40)),
+                        backgroundColor: Colors.white.withOpacity(0.8),
+                        child: Icon(
+                          Icons.person,
+                          size: isSmallScreen
+                              ? 30
+                              : (isWide ? 55 : (isTablet ? 45 : 40)),
+                          color: accentColor,
+                        ),
+                      ),
+                SizedBox(height: isWide ? 30 : (isTablet ? 25 : 15)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    _userName,
+                    style: TextStyle(
+                      fontSize: isSmallScreen
+                          ? 16
+                          : (isWide ? 28 : (isTablet ? 22 : 20)),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(height: isWide ? 10 : 5),
+                Text(
+                  localizedStrings['xray_technician']?[lang] ?? '',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : (isWide ? 20 : (isTablet ? 18 : 16)),
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureBox(
+    BuildContext context,
+    IconData icon,
+    String title,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    final width = MediaQuery.of(context).size.width;
+    final isSmallScreen = width < 350;
+    final isTablet = width >= 600;
+
+    return Material(
+      borderRadius: BorderRadius.circular(15),
+      elevation: 3,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.all(isTablet ? 18 : 12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  size: isSmallScreen ? 24 : (isTablet ? 40 : 30),
+                  color: color,
+                ),
+              ),
+              SizedBox(height: isTablet ? 16 : 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : (isTablet ? 18 : 16),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainFeatures(BuildContext context, String lang, Map<String, Map<String, String>> localizedStrings) {
+    final mediaQuery = MediaQuery.of(context);
+    final width = mediaQuery.size.width;
+    final isSmallScreen = width < 350;
+    final isWide = width > 900;
+    final isTablet = width >= 600 && width <= 900;
+    final crossAxisCount = isWide ? 4 : (isTablet ? 3 : 2);
+    final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
+
+    final features = [
+      {
+        'icon': Icons.list_alt,
+        'title': localizedStrings['waiting_list']?[lang] ?? '',
+        'color': primaryColor,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const XrayRequestListPage(),
+            ),
+          );
+        }
+      },
+      // يمكنك إضافة المزيد من الكبسات هنا إذا أردت
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              double maxWidth = MediaQuery.of(context).size.width;
+              if (maxWidth > 600) {
+                maxWidth = 400;
+              } else if (maxWidth > 400) {
+                maxWidth = 340;
+              } else {
+                maxWidth = maxWidth - 40; // padding
+              }
+              int crossAxisCount = features.length > 1 ? 2 : 1;
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: maxWidth,
+                ),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: features.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                    childAspectRatio: gridChildAspectRatio,
+                  ),
+                  itemBuilder: (context, index) {
+                    final feature = features[index];
+                    return _buildFeatureBox(
+                      context,
+                      feature['icon'] as IconData,
+                      feature['title'] as String,
+                      feature['color'] as Color,
+                      feature['onTap'] as VoidCallback,
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPatientDialog(Map<String, dynamic> patient, String lang, Map<String, Map<String, String>> localizedStrings) async {
     String selectedTooth = '';
     File? xrayImage;
     showDialog(
@@ -96,12 +408,12 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text('تفاصيل المريض'),
+              title: Text(localizedStrings['patient_details']?[lang] ?? ''),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('اسم المريض: ${patient['name'] ?? ''}'),
+                    Text('${localizedStrings['patient_name']?[lang] ?? ''}: ${patient['name'] ?? ''}'),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
                       value: selectedTooth.isNotEmpty ? selectedTooth : null,
@@ -167,177 +479,21 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
     );
   }
 
-  Widget _buildUserInfoCard(BuildContext context, bool isSmallScreen) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      height: isSmallScreen ? 180 : 200,
-      decoration: BoxDecoration(
-        image: const DecorationImage(
-          image: AssetImage('lib/assets/backgrownd.png'),
-          fit: BoxFit.cover,
-        ),
-        color: const Color(0x4D000000),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0x33000000),
-              borderRadius: BorderRadius.circular(15),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _userImageUrl.isNotEmpty
-                    ? CircleAvatar(
-                        radius: isSmallScreen ? 30 : 40,
-                        backgroundColor: Colors.white.withOpacity(0.8),
-                        child: ClipOval(
-                          child: Image.memory(
-                            base64Decode(_userImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
-                            width: isSmallScreen ? 60 : 80,
-                            height: isSmallScreen ? 60 : 80,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      )
-                    : CircleAvatar(
-                        radius: isSmallScreen ? 30 : 40,
-                        backgroundColor: Colors.white.withOpacity(0.8),
-                        child: Icon(
-                          Icons.person,
-                          size: isSmallScreen ? 30 : 40,
-                          color: accentColor,
-                        ),
-                      ),
-                const SizedBox(height: 15),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    _userName,
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 16 : 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'فني الأشعة',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureButton(BuildContext context, IconData icon, String title, Color color, {required VoidCallback onTap}) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 350;
-    return Material(
-      borderRadius: BorderRadius.circular(15),
-      elevation: 3,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(15),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-          ),
-          width: isSmallScreen ? 120 : 140,
-          height: isSmallScreen ? 90 : 110,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: isSmallScreen ? 24 : 30,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMainFeatures(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 18,
-        runSpacing: 12,
-        children: [
-          _buildFeatureButton(
-            context,
-            Icons.list_alt,
-            'قائمة الانتظار',
-            primaryColor,
-            onTap: () {
-              // Scroll to waiting list section or just do nothing (already visible)
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final lang = languageProvider.currentLocale.languageCode;
     final mediaQuery = MediaQuery.of(context);
     final isSmallScreen = mediaQuery.size.width < 350;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxContentWidth = 700.0;
+        final isWide = constraints.maxWidth > 700;
         return Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: languageProvider.currentLocale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
           child: Scaffold(
             backgroundColor: Colors.white,
             appBar: AppBar(
-              title: const Text('داشبورد فني الأشعة'),
+              title: Text(localizedStrings['app_name']?[lang] ?? ''),
               backgroundColor: primaryColor,
               foregroundColor: Colors.white,
               leading: IconButton(
@@ -352,10 +508,9 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                 IconButton(
                   icon: const Icon(Icons.language, color: Colors.white),
                   onPressed: () {
-                    // تغيير اللغة عبر Provider<LanguageProvider>
-                    final provider = Provider.of<LanguageProvider>(context, listen: false);
-                    provider.toggleLanguage();
+                    languageProvider.toggleLanguage();
                   },
+                  tooltip: localizedStrings['change_language']?[lang] ?? '',
                 ),
                 IconButton(
                   icon: const Icon(Icons.logout, color: Colors.white),
@@ -378,33 +533,33 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                       : _hasError
                           ? const Center(child: Text('حدث خطأ أثناء تحميل البيانات'))
                           : Center(
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(maxWidth: maxContentWidth),
-                                child: SingleChildScrollView(
-                                  padding: EdgeInsets.only(bottom: mediaQuery.padding.bottom + 20),
+                              child: SingleChildScrollView(
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isWide ? 0 : 0,
+                                    vertical: 20,
+                                  ),
                                   child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
-                                      _buildUserInfoCard(context, isSmallScreen),
-                                      _buildMainFeatures(context),
-                                      Padding(
-                                        padding: const EdgeInsets.all(20),
-                                        child: ListView.builder(
-                                          shrinkWrap: true,
-                                          physics: const NeverScrollableScrollPhysics(),
-                                          itemCount: waitingPatients.length,
-                                          itemBuilder: (context, index) {
-                                            final patient = waitingPatients[index];
-                                            return Card(
-                                              margin: const EdgeInsets.symmetric(vertical: 8),
-                                              child: ListTile(
-                                                title: Text(patient['name'] ?? 'بدون اسم'),
-                                                subtitle: Text('رقم الملف: ${patient['fileNumber'] ?? ''}'),
-                                                trailing: const Icon(Icons.arrow_forward_ios),
-                                                onTap: () => _showPatientDialog(patient),
-                                              ),
-                                            );
-                                          },
-                                        ),
+                                      _buildUserInfoCard(context, isSmallScreen, lang, localizedStrings),
+                                      _buildMainFeatures(context, lang, localizedStrings),
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics: NeverScrollableScrollPhysics(),
+                                        itemCount: waitingPatients.length,
+                                        itemBuilder: (context, index) {
+                                          final patient = waitingPatients[index];
+                                          return Card(
+                                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                                            child: ListTile(
+                                              title: Text(patient['name'] ?? (localizedStrings['patient_name']?[lang] ?? '')),
+                                              subtitle: Text('${localizedStrings['file_number']?[lang] ?? ''}: ${patient['fileNumber'] ?? ''}'),
+                                              trailing: const Icon(Icons.arrow_forward_ios),
+                                              onTap: () => _showPatientDialog(patient, lang, localizedStrings),
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ],
                                   ),
@@ -412,7 +567,8 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                               ),
                             ),
                 ),
-                if (isSidebarOpen)
+                if (isSidebarOpen) ...[
+                  // طبقة شفافة تغطي الشاشة وتغلق السايد بار عند الضغط
                   Positioned.fill(
                     child: GestureDetector(
                       onTap: () {
@@ -421,38 +577,49 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                         });
                       },
                       child: Container(
-                        color: Colors.black.withOpacity(0.3),
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () {},
-                          child: SizedBox(
-                            width: 260,
-                            height: double.infinity,
-                            child: Material(
-                              elevation: 8,
-                              child: Stack(
-                                children: [
-                                  // يمكن إضافة شريط جانبي مخصص هنا لاحقًا
-                                  Positioned(
-                                    top: 8,
-                                    right: 0,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.close),
-                                      onPressed: () {
-                                        setState(() {
-                                          isSidebarOpen = false;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                        color: Colors.black.withOpacity(0.1), // طبقة شفافة
                       ),
                     ),
                   ),
+                  Positioned(
+                    top: 0,
+                    bottom: 0,
+                    right: lang == 'ar' ? 0 : null,
+                    left: lang == 'ar' ? null : 0,
+                    child: RadiologySidebar(
+                      onClose: () {
+                        setState(() {
+                          isSidebarOpen = false;
+                        });
+                      },
+                      onHome: () {
+                        setState(() {
+                          isSidebarOpen = false;
+                        });
+                        // يمكنك إضافة التنقل هنا
+                      },
+                      onWaitingList: () {
+                        setState(() {
+                          isSidebarOpen = false;
+                        });
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const XrayRequestListPage(),
+                          ),
+                        );
+                      },
+                      primaryColor: primaryColor,
+                      accentColor: accentColor,
+                      userName: _userName,
+                      userImageUrl: _userImageUrl,
+                      collapsed: false,
+                      parentContext: context,
+                      lang: lang,
+                      localizedStrings: localizedStrings,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

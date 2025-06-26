@@ -202,7 +202,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _logout() async {
     await _auth.signOut();
-    Navigator.pushReplacement(
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const LoginPage()),
     );
@@ -399,135 +399,145 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildMainContent(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final isSmallScreen = mediaQuery.size.width < 350;
+    final width = mediaQuery.size.width;
+    final isSmallScreen = width < 350;
+    final isWide = width > 900;
+    final isTablet = width >= 600 && width <= 900;
+    final gridCount = isWide ? 4 : (isTablet ? 3 : 2);
+    final horizontalPadding = isWide ? 60.0 : (isTablet ? 32.0 : 12.0);
+    final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 700;
-        final gridCount = isWide ? 3 : 2;
-        final maxContentWidth = 700.0;
-        return Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxContentWidth),
-            child: Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                  ),
-                ),
-                SingleChildScrollView(
-                  padding: EdgeInsets.only(bottom: mediaQuery.padding.bottom + 20),
-                  child: Column(
-                    children: [
-                      _buildUserInfoCard(context, isSmallScreen),
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: gridCount,
-                          crossAxisSpacing: 15,
-                          mainAxisSpacing: 15,
-                          childAspectRatio: 1.1,
-                          children: [
-                            _buildFeatureBox(
-                              context,
-                              Icons.people,
-                              _translate(context, 'manage_users'),
-                              Colors.blue,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => EditUserPage(
-                                      user: allUsers.isNotEmpty ? allUsers.first : {},
-                                      usersList: allUsers,
-                                      userName: _userName,
-                                      userImageUrl: _userImageUrl,
-                                      translate: _translate,
-                                      onLogout: _logout,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildFeatureBox(
-                              context,
-                              Icons.person_add,
-                              _translate(context, 'add_user'),
-                              Colors.green,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddUserPage(
-                                      userName: _userName,
-                                      userImageUrl: _userImageUrl,
-                                      translate: _translate,
-                                      onLogout: _logout,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildFeatureBox(
-                              context,
-                              Icons.person_add,
-                              _translate(context, 'add_user_student'),
-                              Colors.green,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddDentalStudentPage(
-                                      userName: _userName,
-                                      userImageUrl: _userImageUrl,
-                                      translate: _translate,
-                                      onLogout: _logout,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildFeatureBox(
-                              context,
-                              Icons.group,
-                              _translate(context, 'manage_study_groups'),
-                              Colors.green,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AdminManageGroupsPage(
-                                      userName: _userName,
-                                      userImageUrl: _userImageUrl,
-                                      translate: _translate,
-                                      onLogout: _logout,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                           
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        return Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+              ),
             ),
-          ),
+            SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: horizontalPadding,
+                right: horizontalPadding,
+                bottom: mediaQuery.padding.bottom + (isSmallScreen ? 10 : 20),
+              ),
+              child: Column(
+                children: [
+                  _buildUserInfoCard(context, isSmallScreen, isWide, isTablet),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 4,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: gridCount,
+                        crossAxisSpacing: 15,
+                        mainAxisSpacing: 15,
+                        childAspectRatio: gridChildAspectRatio,
+                      ),
+                      itemBuilder: (context, index) {
+                        final features = [
+                          {
+                            'icon': Icons.people,
+                            'title': _translate(context, 'manage_users'),
+                            'color': Colors.blue,
+                            'onTap': () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditUserPage(
+                                    user: allUsers.isNotEmpty ? allUsers.first : {},
+                                    usersList: allUsers,
+                                    userName: _userName,
+                                    userImageUrl: _userImageUrl,
+                                    translate: _translate,
+                                    onLogout: _logout,
+                                  ),
+                                ),
+                              );
+                            },
+                          },
+                          {
+                            'icon': Icons.person_add,
+                            'title': _translate(context, 'add_user'),
+                            'color': Colors.green,
+                            'onTap': () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddUserPage(
+                                    userName: _userName,
+                                    userImageUrl: _userImageUrl,
+                                    translate: _translate,
+                                    onLogout: _logout,
+                                  ),
+                                ),
+                              );
+                            },
+                          },
+                          {
+                            'icon': Icons.person_add,
+                            'title': _translate(context, 'add_user_student'),
+                            'color': Colors.green,
+                            'onTap': () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AddDentalStudentPage(
+                                    userName: _userName,
+                                    userImageUrl: _userImageUrl,
+                                    translate: _translate,
+                                    onLogout: _logout,
+                                  ),
+                                ),
+                              );
+                            },
+                          },
+                          {
+                            'icon': Icons.group,
+                            'title': _translate(context, 'manage_study_groups'),
+                            'color': Colors.green,
+                            'onTap': () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AdminManageGroupsPage(
+                                    userName: _userName,
+                                    userImageUrl: _userImageUrl,
+                                    translate: _translate,
+                                    onLogout: _logout,
+                                  ),
+                                ),
+                              );
+                            },
+                          },
+                        ];
+                        final feature = features[index];
+                        return _buildFeatureBox(
+                          context,
+                          feature['icon'] as IconData,
+                          feature['title'] as String,
+                          feature['color'] as Color,
+                          onTap: feature['onTap'] as VoidCallback,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildUserInfoCard(BuildContext context, bool isSmallScreen) {
+  Widget _buildUserInfoCard(BuildContext context, bool isSmallScreen, bool isWide, bool isTablet) {
     return Container(
       margin: const EdgeInsets.all(20),
-      height: isSmallScreen ? 180 : 200,
+      height: isSmallScreen ? 180 : (isWide ? 240 : (isTablet ? 220 : 200)),
       decoration: BoxDecoration(
         image: const DecorationImage(
           image: AssetImage('lib/assets/backgrownd.png'),
@@ -557,34 +567,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 _userImageUrl.isNotEmpty
                     ? CircleAvatar(
-                        radius: isSmallScreen ? 30 : 40,
+                        radius: isSmallScreen ? 30 : (isWide ? 55 : (isTablet ? 45 : 40)),
                         backgroundColor: Colors.white.withOpacity(0.8),
                         child: ClipOval(
                           child: Image.memory(
-                            base64Decode(_userImageUrl.replaceFirst(
-                                'data:image/jpeg;base64,', '')),
-                            width: isSmallScreen ? 60 : 80,
-                            height: isSmallScreen ? 60 : 80,
+                            base64Decode(_userImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
+                            width: isSmallScreen ? 60 : (isWide ? 110 : (isTablet ? 90 : 80)),
+                            height: isSmallScreen ? 60 : (isWide ? 110 : (isTablet ? 90 : 80)),
                             fit: BoxFit.cover,
                           ),
                         ),
                       )
                     : CircleAvatar(
-                        radius: isSmallScreen ? 30 : 40,
+                        radius: isSmallScreen ? 30 : (isWide ? 55 : (isTablet ? 45 : 40)),
                         backgroundColor: Colors.white.withOpacity(0.8),
                         child: Icon(
                           Icons.person,
-                          size: isSmallScreen ? 30 : 40,
+                          size: isSmallScreen ? 30 : (isWide ? 55 : (isTablet ? 45 : 40)),
                           color: accentColor,
                         ),
                       ),
-                const SizedBox(height: 15),
+                SizedBox(height: isWide ? 30 : (isTablet ? 25 : 15)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text(
                     _userName,
                     style: TextStyle(
-                      fontSize: isSmallScreen ? 16 : 20,
+                      fontSize: isSmallScreen ? 16 : (isWide ? 28 : (isTablet ? 22 : 20)),
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -597,7 +606,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Text(
                   _translate(context, 'admin'),
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : 16,
+                    fontSize: isSmallScreen ? 14 : (isWide ? 18 : (isTablet ? 16 : 16)),
                     color: Colors.white,
                   ),
                 ),
@@ -647,7 +656,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Color color, {
     required VoidCallback onTap,
   }) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 350;
+    final width = MediaQuery.of(context).size.width;
+    final isSmallScreen = width < 350;
+    final isTablet = width >= 600 && width <= 900;
+    final isWide = width > 900;
 
     return Material(
       borderRadius: BorderRadius.circular(15),
@@ -664,24 +676,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(isTablet ? 18 : 12),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
-                  size: isSmallScreen ? 24 : 30,
+                  size: isSmallScreen ? 24 : (isTablet ? 40 : (isWide ? 40 : 30)),
                   color: color,
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: isTablet ? 16 : 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : 16,
+                    fontSize: isSmallScreen ? 14 : (isTablet ? 18 : (isWide ? 18 : 16)),
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),

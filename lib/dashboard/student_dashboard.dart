@@ -59,6 +59,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     'server_error': {'ar': 'خطأ في السيرفر', 'en': 'Server error'},
     'no_notifications': {'ar': 'لا توجد إشعارات', 'en': 'No notifications'},
     'close': {'ar': 'إغلاق', 'en': 'Close'},
+    'my_appointments': {'ar': 'مواعيدي', 'en': 'My Appointments'},
   };
 
   @override
@@ -408,7 +409,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 // زر مواعيدي بدلاً من زر الإشعارات
                 ListTile(
                   leading: Icon(Icons.calendar_today, color: Colors.orange),
-                  title: Text('مواعيدي'),
+                  title: Text(_translate(context, 'my_appointments')),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -735,7 +736,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         _buildFeatureBox(
                           context,
                           Icons.calendar_today,
-                          'مواعيدي',
+                          _translate(context, 'my_appointments'),
                           Colors.orange,
                           onTap: () {
                             Navigator.push(

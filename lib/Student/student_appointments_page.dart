@@ -211,7 +211,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
     final isTablet = width >= 600;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('مواعيدي'),
+        title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'مواعيدي' : 'My Appointments'),
         backgroundColor: const Color(0xFF2A7A94),
         centerTitle: true,
         elevation: 2,
@@ -238,7 +238,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'إضافة موعد جديد',
+                      Localizations.localeOf(context).languageCode == 'ar' ? 'إضافة موعد جديد' : 'Add New Appointment',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: isTablet ? 22 : 18,
@@ -249,7 +249,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                     TextField(
                       controller: _patientController,
                       decoration: InputDecoration(
-                        labelText: 'ابحث عن اسم المريض',
+                        labelText: Localizations.localeOf(context).languageCode == 'ar' ? 'ابحث عن اسم المريض' : 'Search for patient name',
                         prefixIcon: Icon(Icons.search),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
@@ -284,26 +284,35 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.calendar_today),
-                            label: Text(selectedDate == null
-                                ? 'اختر اليوم'
-                                : '${selectedDate!.year}/${selectedDate!.month}/${selectedDate!.day}'),
+                            icon: Icon(Icons.calendar_today, color: Color(0xFF2A7A94)),
+                            label: Text(
+                              selectedDate == null
+                                  ? (Localizations.localeOf(context).languageCode == 'ar' ? 'اختر اليوم' : 'Select day')
+                                  : '${selectedDate!.year}/${selectedDate!.month}/${selectedDate!.day}',
+                              style: TextStyle(color: Color(0xFF2A7A94)),
+                            ),
                             onPressed: _pickDate,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.access_time),
-                            label: Text(startTime == null ? 'من' : startTime!.format(context)),
+                            icon: Icon(Icons.access_time, color: Color(0xFF2A7A94)),
+                            label: Text(
+                              startTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'من' : 'From') : startTime!.format(context),
+                              style: TextStyle(color: Color(0xFF2A7A94)),
+                            ),
                             onPressed: () => _pickTime(true),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.access_time_filled),
-                            label: Text(endTime == null ? 'إلى' : endTime!.format(context)),
+                            icon: Icon(Icons.access_time_filled, color: Color(0xFF2A7A94)),
+                            label: Text(
+                              endTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'إلى' : 'To') : endTime!.format(context),
+                              style: TextStyle(color: Color(0xFF2A7A94)),
+                            ),
                             onPressed: () => _pickTime(false),
                           ),
                         ),
@@ -313,15 +322,18 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                     _isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton.icon(
-                            icon: const Icon(Icons.add),
+                            icon: const Icon(Icons.add, color: Colors.white),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF2A7A94),
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              textStyle: TextStyle(fontSize: isTablet ? 18 : 16),
+                              textStyle: TextStyle(fontSize: isTablet ? 18 : 16, color: Colors.white),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             onPressed: _addAppointment,
-                            label: const Text('إضافة الموعد'),
+                            label: Text(
+                              Localizations.localeOf(context).languageCode == 'ar' ? 'إضافة الموعد' : 'Add Appointment',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                   ],
                 ),
@@ -329,11 +341,11 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
             ),
             const SizedBox(height: 28),
             Text(
-              'جميع مواعيدي',
+              Localizations.localeOf(context).languageCode == 'ar' ? 'جميع مواعيدي' : 'All My Appointments',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: isTablet ? 20 : 16,
-                color: Colors.black87,
+                color: Colors.black87, // لون مريح للعين
               ),
             ),
             const SizedBox(height: 10),
@@ -355,12 +367,14 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                             backgroundColor: const Color(0xFF4AB8D8),
                             child: Icon(Icons.calendar_today, color: Colors.white),
                           ),
-                          title: Text('اليوم: ' + DateTime.parse(appt['date']).toLocal().toString().split(' ')[0]),
+                          title: Text(
+                            (Localizations.localeOf(context).languageCode == 'ar' ? 'اليوم: ' : 'Day: ') + DateTime.parse(appt['date']).toLocal().toString().split(' ')[0]),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('من: ${appt['start']} إلى: ${appt['end']}'),
-                              Text('المريض: ${appt['patientName'] ?? ''}'),
+                              Text((Localizations.localeOf(context).languageCode == 'ar' ? 'من: ' : 'From: ') + "${appt['start']}"),
+                              Text((Localizations.localeOf(context).languageCode == 'ar' ? 'إلى: ' : 'To: ') + "${appt['end']}"),
+                              Text((Localizations.localeOf(context).languageCode == 'ar' ? 'المريض: ' : 'Patient: ') + (appt['patientName'] ?? '')),
                             ],
                           ),
                           trailing: IconButton(
@@ -369,7 +383,32 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                             onPressed: () async {
                               final key = appt['key'];
                               if (key != null) {
-                                await _deleteAppointment(key);
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تأكيد الحذف' : 'Confirm Deletion'),
+                                    content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'هل أنت متأكد أنك تريد حذف هذا الموعد؟' : 'Are you sure you want to delete this appointment?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(false),
+                                        child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'لا' : 'No'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(true),
+                                        child: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'نعم' : 'Yes'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  await _deleteAppointment(key);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تم حذف الموعد بنجاح' : 'Appointment deleted successfully'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
                               }
                             },
                           ),

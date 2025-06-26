@@ -40,7 +40,7 @@ class StudentSidebar extends StatelessWidget {
           // الرئيسية أول عنصر
           ListTile(
             leading: Icon(Icons.home, color: primaryColor),
-            title: const Text('الرئيسية'),
+            title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'الرئيسية' : 'Home'),
             onTap: () {
               Navigator.pushAndRemoveUntil(
                 context,
@@ -51,7 +51,7 @@ class StudentSidebar extends StatelessWidget {
           ),
           ListTile(
             leading: Icon(Icons.assignment, color: primaryColor),
-            title: const Text('عرض الفحوصات'),
+            title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'عرض الفحوصات' : 'View Examinations'),
             onTap: () {
               Navigator.push(
                 context,
@@ -66,7 +66,7 @@ class StudentSidebar extends StatelessWidget {
           ),
           ListTile(
             leading: Icon(Icons.medical_services, color: Colors.green),
-            title: const Text('فحص المريض'),
+            title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'فحص المريض' : 'Examine Patient'),
             onTap: () {
               Navigator.push(
                 context,
@@ -77,7 +77,7 @@ class StudentSidebar extends StatelessWidget {
           // زر مواعيدي
           ListTile(
             leading: Icon(Icons.calendar_today, color: Colors.orange),
-            title: const Text('مواعيدي'),
+            title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'مواعيدي' : 'My Appointments'),
             onTap: () {
               Navigator.push(
                 context,
