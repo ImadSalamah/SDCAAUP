@@ -9,12 +9,14 @@ class InitialExamination extends StatefulWidget {
   final Map<String, dynamic>? patientData;
   final int? age;
   final String doctorId;
+  final String patientId; // أضف هذا المتغير
 
   const InitialExamination({
     super.key,
     this.patientData,
     this.age,
     required this.doctorId,
+    required this.patientId, // أضف هنا أيضاً
   });
 
   @override
@@ -52,12 +54,14 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
 
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
   Map<String, Color> _teethColors = {};
+  Map<String, dynamic>? _screeningData;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-
+    // لا تعتمد على patientData['id'] نهائياً، فقط تحقق من widget.patientId
+    assert(widget.patientId.isNotEmpty, 'patientId (user id) must not be empty');
     if (widget.patientData != null && widget.patientData!['dentalChart'] != null) {
       final dentalChart = widget.patientData!['dentalChart'] as Map<String, dynamic>?;
       if (dentalChart != null) {
@@ -249,26 +253,35 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
 
   Future<void> _submitExamination() async {
     try {
-      final patientId = widget.patientData?['id'];
-      if (patientId == null) {
-        throw Exception('Patient ID is null');
+      // استخدم دومًا معرف المستخدم الحقيقي الممرر عبر widget.patientId
+      final patientId = widget.patientId;
+      debugPrint('Submitting examination for patientId: ' + patientId);
+      if (patientId.isEmpty) {
+        throw Exception('Patient ID is empty');
       }
+      // أضف userId داخل examData وأضف id أيضاً
+      final Map<String, dynamic> examDataWithId = Map<String, dynamic>.from(_examData);
+      examDataWithId['userId'] = patientId;
+      examDataWithId['id'] = patientId; // إضافة id
       final examRecord = {
         'patientId': patientId,
+        'id': patientId, // إضافة id في السجل الرئيسي أيضاً
         'doctorId': widget.doctorId,
         'timestamp': ServerValue.timestamp,
-        'examData': _examData,
+        'examData': examDataWithId,
+        'screening': _screeningData,
       };
-      await _database.child('examinations').push().set(examRecord);
+      // احفظ الفحص مباشرة تحت examinations/{patientId} (فحص واحد فقط لكل مريض)
+      await _database.child('examinations').child(patientId).set(examRecord);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Examination saved successfully!')),
+        const SnackBar(content: Text('Examination and screening saved successfully!')),
       );
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+        SnackBar(content: Text('Error: [${e.toString()}')),
       );
     }
   }
@@ -278,9 +291,8 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
       patientData: widget.patientData,
       age: widget.age,
       onSave: (screeningData) {
-        // Store screeningData in a variable for later use in _submitExamination
         setState(() {
-          _examData['screening'] = screeningData;
+          _screeningData = screeningData;
         });
       },
     );

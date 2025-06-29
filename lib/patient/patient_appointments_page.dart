@@ -8,8 +8,7 @@ import '../dashboard/patient_dashboard.dart';
 
 class PatientAppointmentsPage extends StatefulWidget {
   final String patientUid;
-  final String patientName;
-  const PatientAppointmentsPage({super.key, required this.patientUid, required this.patientName});
+  const PatientAppointmentsPage({super.key, required this.patientUid});
 
   @override
   State<PatientAppointmentsPage> createState() => _PatientAppointmentsPageState();
@@ -19,31 +18,11 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
   bool _isLoading = true;
   List<Map<String, dynamic>> _appointments = [];
-  String patientImageUrl = '';
-  bool patientInfoLoading = true;
 
   @override
   void initState() {
     super.initState();
     _fetchAppointments();
-    _loadPatientInfo();
-  }
-
-  void _loadPatientInfo() async {
-    final userSnap = await _database.child('users/${widget.patientUid}').get();
-    if (userSnap.exists && userSnap.value != null) {
-      final userData = Map<String, dynamic>.from(userSnap.value as Map);
-      final imageData = userData['image']?.toString() ?? '';
-      setState(() {
-        patientImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
-        patientInfoLoading = false;
-      });
-    } else {
-      setState(() {
-        patientImageUrl = '';
-        patientInfoLoading = false;
-      });
-    }
   }
 
   Future<void> _fetchAppointments() async {
@@ -59,9 +38,7 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
           appt['key'] = entry.key;
 
           final patientUid = appt['patientUid']?.toString();
-          final patientName = appt['patientName']?.toString();
-          if ((patientUid != null && patientUid == widget.patientUid) ||
-              (patientName != null && patientName == widget.patientName)) {
+          if (patientUid != null && patientUid == widget.patientUid) {
             appts.add(appt);
           }
         }
@@ -69,8 +46,6 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
         for (var appt in appts) {
           String phone = '';
           String fullName = '';
-
-          // جلب اسم الطالب ورقم هاتفه من users باستخدام userId == studentId
           final studentId = appt['studentId']?.toString();
           if (studentId != null && studentId.isNotEmpty) {
             final userSnap = await _database.child('users/$studentId').get();
@@ -85,19 +60,15 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
               phone = phoneVal;
             }
           }
-
           appt['createdByName'] = fullName.isNotEmpty ? fullName : '---';
           appt['createdByPhone'] = phone;
         }
-
-        // ترتيب حسب التاريخ
         appts.sort((a, b) {
           final aTime = DateTime.tryParse(a['date'] ?? '') ?? DateTime.now();
           final bTime = DateTime.tryParse(b['date'] ?? '') ?? DateTime.now();
           return aTime.compareTo(bTime);
         });
       }
-
       setState(() {
         _appointments = appts;
         _isLoading = false;
@@ -112,7 +83,6 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
 
   String formatTime(String time) {
     try {
-      // معالجة الوقت مثل "7:00 م" أو "6:00 ص"
       final arTime = time.replaceAll('ص', 'AM').replaceAll('م', 'PM').replaceAll(' ', '');
       final parsed = DateFormat('h:mm a', 'en').parse(arTime);
       return DateFormat('h:mm a', 'ar').format(parsed);
@@ -146,24 +116,10 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
         );
         break;
       case '/patient_profile':
-        // جلب بيانات المريض من قاعدة البيانات
-        final userSnap = await _database.child('users/${widget.patientUid}').get();
-        Map<String, dynamic> patientData = {};
-        String patientImageUrl = '';
-        if (userSnap.exists && userSnap.value != null) {
-          patientData = Map<String, dynamic>.from(userSnap.value as Map);
-          final imageData = patientData['image']?.toString() ?? '';
-          if (imageData.isNotEmpty) {
-            patientImageUrl = 'data:image/jpeg;base64,$imageData';
-          }
-        }
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PatientProfilePage(
-              patientData: patientData,
-              patientImageUrl: patientImageUrl,
-            ),
+            builder: (context) => const PatientProfilePage(),
           ),
         );
         break;
@@ -182,28 +138,23 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
       String dateOnly = dateStr.contains('T') ? dateStr.split('T')[0] : (dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr);
       return dateOnly == todayStr;
     });
-
     final Color primaryColor = const Color(0xFF2A7A94);
     final locale = Localizations.localeOf(context).languageCode;
     String t(String ar, String en) => locale == 'ar' ? ar : en;
-    final todayLabel = t('اليوم', 'Today');
     final hasTodayLabel = t('يوجد موعد اليوم', 'You have an appointment today');
     final noTodayLabel = t('لا يوجد موعد اليوم', 'No appointment today');
     final isTodayLabel = t('موعد اليوم', 'Today');
     final notTodayLabel = t('ليس اليوم', 'Not today');
-
     return Scaffold(
       appBar: AppBar(
         title: Text(t('مواعيدي', 'My Appointments'), style: theme.textTheme.headlineSmall?.copyWith(color: Colors.white)),
-        backgroundColor: primaryColor, // اللون الرئيسي الموحد
+        backgroundColor: primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 2,
       ),
       drawer: PatientSidebar(
         onNavigate: _handleSidebarNavigation,
         currentRoute: '/patient_appointments',
-        patientName: widget.patientName,
-        patientImageUrl: patientImageUrl,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -223,7 +174,7 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
                               hasTodayAppointment ? hasTodayLabel : noTodayLabel,
                               style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                             ),
-                            backgroundColor: primaryColor, // اللون الرئيسي الموحد
+                            backgroundColor: primaryColor,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           ),
                         ],
@@ -243,9 +194,7 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
                           } else {
                             dateOnly = dateStr;
                           }
-
                           bool isToday = dateOnly == todayStr;
-
                           return Card(
                             margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                             shape: RoundedRectangleBorder(

@@ -3,6 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
+import '../../providers/secretary_provider.dart';
 import '../Doctor/initial_examination.dart';
 import '../Doctor/doctor_sidebar.dart';
 import '../Secretry/secretary_sidebar.dart';
@@ -35,8 +36,6 @@ class _WaitingListPageState extends State<WaitingListPage> {
 
   String? _doctorName;
   String? _doctorImageUrl;
-  String? _secretaryName;
-  String? _secretaryImageUrl;
 
   final Map<String, Map<String, String>> _translations = {
     'waiting_list': {'ar': 'قائمة الانتظار', 'en': 'Waiting List'},
@@ -92,9 +91,8 @@ class _WaitingListPageState extends State<WaitingListPage> {
     _searchController.addListener(_filterWaitingList);
     if (widget.userRole == 'doctor') {
       _loadDoctorInfo();
-    } else if (widget.userRole == 'secretary') {
-      _loadSecretaryInfo();
     }
+    // لا داعي لتحميل بيانات السكرتيرة هنا، سيتم أخذها من SecretaryProvider
   }
 
   @override
@@ -176,24 +174,34 @@ class _WaitingListPageState extends State<WaitingListPage> {
 
         // جلب بيانات المستخدم من جدول users باستخدام userId
         final user = allUsers.firstWhere(
-          (u) => u['id'] == waitingData['userId'],
+          (u) => u['id'].toString().trim() == waitingData['userId'].toString().trim(),
           orElse: () => {},
         );
 
-        // إذا وجد المستخدم في جدول users، استخدم بياناته، وإلا استخدم البيانات من عنصر قائمة الانتظار
-        waitingData['firstName'] = user.isNotEmpty
-            ? user['firstName']?.toString().trim() ?? ''
-            : (waitingData['name']?.toString().split(' ').first ?? '');
-        waitingData['fatherName'] = user.isNotEmpty
-            ? user['fatherName']?.toString().trim() ?? ''
-            : '';
-        waitingData['grandfatherName'] = user.isNotEmpty
-            ? user['grandfatherName']?.toString().trim() ?? ''
-            : '';
-        waitingData['familyName'] = user.isNotEmpty
-            ? user['familyName']?.toString().trim() ?? ''
-            : (waitingData['name']?.toString().split(' ').length == 4 ? waitingData['name']?.toString().split(' ').last : '');
-        waitingData['birthDate'] = user.isNotEmpty ? user['birthDate'] ?? 0 : 0;
+        // إذا وجد المستخدم في جدول users، استخدم بياناته
+        if (user.isNotEmpty) {
+          waitingData['firstName'] = user['firstName']?.toString().trim() ?? '';
+          waitingData['fatherName'] = user['fatherName']?.toString().trim() ?? '';
+          waitingData['grandfatherName'] = user['grandfatherName']?.toString().trim() ?? '';
+          waitingData['familyName'] = user['familyName']?.toString().trim() ?? '';
+        } else if (waitingData.containsKey('firstName') && waitingData.containsKey('fatherName') && waitingData.containsKey('grandfatherName') && waitingData.containsKey('familyName')) {
+          // إذا كانت الحقول الرباعية موجودة في عنصر قائمة الانتظار، استخدمها كما هي
+          waitingData['firstName'] = waitingData['firstName']?.toString().trim() ?? '';
+          waitingData['fatherName'] = waitingData['fatherName']?.toString().trim() ?? '';
+          waitingData['grandfatherName'] = waitingData['grandfatherName']?.toString().trim() ?? '';
+          waitingData['familyName'] = waitingData['familyName']?.toString().trim() ?? '';
+        } else {
+          // fallback: تقسيم الاسم إذا لم تتوفر الحقول الرباعية
+          final nameParts = (waitingData['name']?.toString() ?? '').split(' ');
+          waitingData['firstName'] = nameParts.isNotEmpty ? nameParts[0] : '';
+          waitingData['fatherName'] = nameParts.length > 1 ? nameParts[1] : '';
+          waitingData['grandfatherName'] = nameParts.length > 2 ? nameParts[2] : '';
+          waitingData['familyName'] = nameParts.length > 3 ? nameParts[3] : '';
+        }
+        // تعديل هنا: جلب birthDate من user أو من waitingData إذا كان موجودًا
+        waitingData['birthDate'] = user.isNotEmpty
+            ? user['birthDate'] ?? waitingData['birthDate'] ?? 0
+            : waitingData['birthDate'] ?? 0;
         waitingData['gender'] = user.isNotEmpty ? user['gender']?.toString().trim() ?? '' : '';
         waitingData['phone'] = waitingData['phone'] ?? (user.isNotEmpty ? user['phone']?.toString().trim() ?? '' : '');
 
@@ -287,6 +295,36 @@ class _WaitingListPageState extends State<WaitingListPage> {
     }
   }
 
+  Future<Map<String, dynamic>?> _fetchLatestExamination(String patientId) async {
+    try {
+      final examinationsRef = FirebaseDatabase.instance.ref('examinations');
+      final snapshot = await examinationsRef.get();
+      if (!snapshot.exists) return null;
+      final data = snapshot.value as Map<dynamic, dynamic>?;
+      if (data == null) return null;
+      Map<String, dynamic>? latestExam;
+      int latestTimestamp = 0;
+      data.forEach((key, value) {
+        if (value is Map<dynamic, dynamic>) {
+          final exam = Map<String, dynamic>.from(value);
+          if (exam['patientId']?.toString() == patientId) {
+            final ts = exam['timestamp'] is int
+                ? exam['timestamp'] as int
+                : int.tryParse(exam['timestamp']?.toString() ?? '') ?? 0;
+            if (ts > latestTimestamp) {
+              latestTimestamp = ts;
+              latestExam = exam;
+            }
+          }
+        }
+      });
+      return latestExam;
+    } catch (e) {
+      debugPrint('Error fetching latest examination: $e');
+      return null;
+    }
+  }
+
   Future<void> _moveToInitialExamination(
       Map<String, dynamic> patientData) async {
     try {
@@ -301,6 +339,18 @@ class _WaitingListPageState extends State<WaitingListPage> {
         );
         return;
       }
+
+      // استخدم id الموجود داخل بيانات المريض كمعرف حقيقي
+     String? realUserId = patientData['userId']?.toString();
+
+      if (realUserId == null || realUserId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا يوجد userId حقيقي للمريض!')),
+        );
+        return;
+      }
+      patientData['authUid'] = realUserId;
+      patientData['userId'] = realUserId;
 
       dynamic birthDateValue = patientData['birthDate'];
       int birthTimestamp = 0;
@@ -324,16 +374,30 @@ class _WaitingListPageState extends State<WaitingListPage> {
         }
       }
 
-      await _waitingListRef.child(patientData['id']).remove();
+      // جلب بيانات الفحص السابقة
+      final latestExam = await _fetchLatestExamination(realUserId);
+      Map<String, dynamic> patientDataWithExam = Map<String, dynamic>.from(patientData);
+      if (latestExam != null && latestExam['examData'] != null) {
+        patientDataWithExam['examData'] = latestExam['examData'];
+      }
+
+      // احذف من قائمة الانتظار باستخدام key الخاص بالwaitingList
+      String? waitingListId = patientData['id']?.toString();
+      if (waitingListId != null && waitingListId.isNotEmpty) {
+        await _waitingListRef.child(waitingListId).remove();
+      }
       if (!mounted) return;
 
+      final String doctorId = user.uid;
+      final String patientIdStr = realUserId; // patientId هو id الموجود داخل بيانات المريض
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => InitialExamination(
-            patientData: patientData,
+            patientData: patientDataWithExam,
             age: ageInYears,
-            doctorId: user.uid,
+            doctorId: doctorId,
+            patientId: patientIdStr, // patientId هو id الموجود داخل بيانات المريض
           ),
         ),
       );
@@ -594,25 +658,6 @@ class _WaitingListPageState extends State<WaitingListPage> {
     }
   }
 
-  Future<void> _loadSecretaryInfo() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    final snapshot = await FirebaseDatabase.instance.ref('users/${user.uid}').get();
-    if (snapshot.exists) {
-      final data = snapshot.value as Map<dynamic, dynamic>;
-      final firstName = data['firstName']?.toString().trim() ?? '';
-      final fatherName = data['fatherName']?.toString().trim() ?? '';
-      final grandfatherName = data['grandfatherName']?.toString().trim() ?? '';
-      final familyName = data['familyName']?.toString().trim() ?? '';
-      final fullName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
-      final imageData = data['image']?.toString() ?? '';
-      setState(() {
-        _secretaryName = fullName.isNotEmpty ? fullName : null;
-        _secretaryImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : null;
-      });
-    }
-  }
-
   Widget? _buildSidebar(BuildContext context) {
     if (widget.userRole == 'doctor') {
       return DoctorSidebar(
@@ -625,11 +670,12 @@ class _WaitingListPageState extends State<WaitingListPage> {
         onLogout: null,
       );
     } else if (widget.userRole == 'secretary') {
+      final secretaryProvider = Provider.of<SecretaryProvider>(context);
       return SecretarySidebar(
         primaryColor: primaryColor,
         accentColor: primaryColor,
-        userName: _secretaryName ?? "سكرتير",
-        userImageUrl: _secretaryImageUrl ?? '',
+        userName: secretaryProvider.fullName.isNotEmpty ? secretaryProvider.fullName : "سكرتير",
+        userImageUrl: secretaryProvider.imageBase64,
         parentContext: context,
         translate: _translate,
         onLogout: null,

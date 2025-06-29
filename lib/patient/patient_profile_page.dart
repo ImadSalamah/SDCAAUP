@@ -5,19 +5,15 @@ import '../dashboard/patient_dashboard.dart';
 import 'patient_appointments_page.dart';
 import 'patient_prescriptions_page.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../providers/patient_provider.dart';
+import 'package:provider/provider.dart';
 
 class PatientProfilePage extends StatelessWidget {
-  final Map<String, dynamic> patientData;
-  final String patientImageUrl;
-
-  const PatientProfilePage({
-    Key? key,
-    required this.patientData,
-    required this.patientImageUrl,
-  }) : super(key: key);
+  const PatientProfilePage({Key? key}) : super(key: key);
 
   void _handleSidebarNavigation(BuildContext context, String route) async {
     if (ModalRoute.of(context)?.settings.name == route) return;
+    final patientProvider = Provider.of<PatientProvider>(context, listen: false);
     switch (route) {
       case '/patient_dashboard':
         Navigator.pushAndRemoveUntil(
@@ -30,84 +26,60 @@ class PatientProfilePage extends StatelessWidget {
         Navigator.pushNamed(context, '/medical_records');
         break;
       case '/patient_appointments':
-        // جلب اسم المريض من البيانات الحالية
-        String patientName = '';
-        if (patientData.isNotEmpty) {
-          final firstName = patientData['firstName']?.toString().trim() ?? '';
-          final fatherName = patientData['fatherName']?.toString().trim() ?? '';
-          final grandfatherName = patientData['grandfatherName']?.toString().trim() ?? '';
-          final familyName = patientData['familyName']?.toString().trim() ?? '';
-          patientName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
-        }
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PatientAppointmentsPage(
-              patientUid: patientData['uid'] ?? '',
-              patientName: patientName,
+              patientUid: patientProvider.uid,
+              key: UniqueKey(),
             ),
           ),
         );
         break;
       case '/patient_prescriptions':
-        // جلب uid من قاعدة البيانات إذا لم يكن موجودًا في patientData
-        String patientId = patientData['uid']?.toString() ?? '';
-        if (patientId.isEmpty && patientData['phone'] != null) {
+        if (patientProvider.uid.isEmpty && patientProvider.phone.isNotEmpty) {
           // ابحث عن uid باستخدام رقم الهاتف
           final usersRef = FirebaseDatabase.instance.ref('users');
           final usersSnap = await usersRef.get();
+          String patientId = '';
           if (usersSnap.exists && usersSnap.value != null) {
             final usersMap = Map<String, dynamic>.from(usersSnap.value as Map);
             usersMap.forEach((uid, user) {
-              if (user is Map && user['phone'] == patientData['phone']) {
+              if (user is Map && user['phone'] == patientProvider.phone) {
                 patientId = uid;
               }
             });
           }
-        }
-        if (patientId.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لا يوجد رقم تعريف للمريض!')),
-          );
-          break;
-        }
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PatientPrescriptionsPage(
-              patientId: patientId,
+          if (patientId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('لا يوجد رقم تعريف للمريض!')),
+            );
+            break;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PatientPrescriptionsPage(
+                patientId: patientId,
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PatientPrescriptionsPage(
+                patientId: patientProvider.uid,
+              ),
+            ),
+          );
+        }
         break;
       case '/patient_profile':
-        // إذا لم تكن البيانات متوفرة، جلبها من قاعدة البيانات
-        Map<String, dynamic> data = patientData;
-        String imageUrl = patientImageUrl;
-        if ((data['uid'] == null || data['uid'].toString().isEmpty) && data['phone'] != null) {
-          final usersRef = FirebaseDatabase.instance.ref('users');
-          final usersSnap = await usersRef.get();
-          if (usersSnap.exists && usersSnap.value != null) {
-            final usersMap = Map<String, dynamic>.from(usersSnap.value as Map);
-            usersMap.forEach((uid, user) {
-              if (user is Map && user['phone'] == data['phone']) {
-                data = Map<String, dynamic>.from(user);
-                data['uid'] = uid;
-                final imageData = user['image']?.toString() ?? '';
-                if (imageData.isNotEmpty) {
-                  imageUrl = 'data:image/jpeg;base64,$imageData';
-                }
-              }
-            });
-          }
-        }
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PatientProfilePage(
-              patientData: data,
-              patientImageUrl: imageUrl,
-            ),
+            builder: (context) => const PatientProfilePage(),
           ),
         );
         break;
@@ -118,13 +90,10 @@ class PatientProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final patientProvider = Provider.of<PatientProvider>(context);
     final isSmallScreen = MediaQuery.of(context).size.width < 350;
-    final String fullName = [
-      patientData['firstName'] ?? '',
-      patientData['fatherName'] ?? '',
-      patientData['grandfatherName'] ?? '',
-      patientData['familyName'] ?? '',
-    ].where((e) => e != null && e.toString().trim().isNotEmpty).join(' ');
+    final String fullName = patientProvider.fullName;
+    final String imageBase64 = patientProvider.imageBase64;
 
     return Scaffold(
       appBar: AppBar(
@@ -136,8 +105,6 @@ class PatientProfilePage extends StatelessWidget {
       drawer: PatientSidebar(
         onNavigate: (route) => _handleSidebarNavigation(context, route),
         currentRoute: '/patient_profile',
-        patientName: fullName,
-        patientImageUrl: patientImageUrl,
       ),
       body: Container(
         width: double.infinity,
@@ -164,19 +131,8 @@ class PatientProfilePage extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: patientImageUrl.isNotEmpty
-                    ? CircleAvatar(
-                        radius: isSmallScreen ? 48 : 64,
-                        backgroundColor: Colors.grey.shade200,
-                        child: ClipOval(
-                          child: Image.memory(
-                            base64.decode(patientImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
-                            width: isSmallScreen ? 96 : 128,
-                            height: isSmallScreen ? 96 : 128,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      )
+                child: imageBase64.isNotEmpty
+                    ? _buildSafeProfileAvatar(imageBase64, isSmallScreen)
                     : CircleAvatar(
                         radius: isSmallScreen ? 48 : 64,
                         backgroundColor: Colors.grey.shade200,
@@ -200,14 +156,15 @@ class PatientProfilePage extends StatelessWidget {
   }
 
   Widget _buildInfoCard(BuildContext context) {
+    final patientProvider = Provider.of<PatientProvider>(context);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final infoList = [
-      {'label': isArabic ? 'رقم الهاتف' : 'Phone Number', 'value': patientData['phone']},
-      {'label': isArabic ? 'البريد الإلكتروني' : 'Email', 'value': patientData['email']},
-      {'label': isArabic ? 'رقم الهوية' : 'ID Number', 'value': patientData['idNumber']},
-      {'label': isArabic ? 'تاريخ الميلاد' : 'Birth Date', 'value': patientData['birthDate']},
-      {'label': isArabic ? 'الجنس' : 'Gender', 'value': patientData['gender']},
-      {'label': isArabic ? 'العنوان' : 'Address', 'value': patientData['address']},
+      {'label': isArabic ? 'رقم الهاتف' : 'Phone Number', 'value': patientProvider.phone},
+      {'label': isArabic ? 'البريد الإلكتروني' : 'Email', 'value': patientProvider.email},
+      {'label': isArabic ? 'رقم الهوية' : 'ID Number', 'value': patientProvider.idNumber},
+      {'label': isArabic ? 'تاريخ الميلاد' : 'Birth Date', 'value': patientProvider.birthDate},
+      {'label': isArabic ? 'الجنس' : 'Gender', 'value': patientProvider.gender},
+      {'label': isArabic ? 'العنوان' : 'Address', 'value': patientProvider.address},
     ];
     return Card(
       elevation: 3,
@@ -292,4 +249,34 @@ class PatientProfilePage extends StatelessWidget {
         return Icons.info_outline;
     }
   }
+
+  // Add this widget to handle invalid base64 gracefully in profile page
+  Widget _buildSafeProfileAvatar(String base64String, bool isSmallScreen) {
+    try {
+      final bytes = base64.decode(_cleanBase64(base64String));
+      return CircleAvatar(
+        radius: isSmallScreen ? 48 : 64,
+        backgroundColor: Colors.grey.shade200,
+        child: ClipOval(
+          child: Image.memory(
+            bytes,
+            width: isSmallScreen ? 96 : 128,
+            height: isSmallScreen ? 96 : 128,
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } catch (e) {
+      return CircleAvatar(
+        radius: isSmallScreen ? 48 : 64,
+        backgroundColor: Colors.grey.shade200,
+        child: const Icon(Icons.person, size: 60, color: Colors.blueGrey),
+      );
+    }
+  }
+}
+
+String _cleanBase64(String base64String) {
+  final regex = RegExp(r'^data:image\/[^;]+;base64,');
+  return base64String.replaceFirst(regex, '');
 }

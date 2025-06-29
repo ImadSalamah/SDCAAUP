@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:provider/provider.dart';
+import '../../providers/secretary_provider.dart';
 import '../dashboard/secretary_dashboard.dart';
 import '../Shared/patient_files.dart';
 import '../Shared/waiting_list_page.dart';
@@ -34,6 +36,7 @@ class SecretarySidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final secretaryProvider = Provider.of<SecretaryProvider>(context);
     double sidebarWidth = collapsed ? 60 : 250;
     if (MediaQuery.of(context).size.width < 700 && !collapsed) {
       sidebarWidth = 200;
@@ -51,13 +54,40 @@ class SecretarySidebar extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildUserAvatar(),
+                  (userImageUrl != null && userImageUrl!.isNotEmpty)
+                      ? CircleAvatar(
+                          radius: 32,
+                          backgroundColor: Colors.white,
+                          backgroundImage: userImageUrl!.startsWith('data:image')
+                              ? MemoryImage(base64Decode(userImageUrl!.split(',').last))
+                              : NetworkImage(userImageUrl!) as ImageProvider,
+                        )
+                      : (secretaryProvider.imageBase64.isNotEmpty
+                          ? CircleAvatar(
+                              radius: 32,
+                              backgroundColor: Colors.white,
+                              child: ClipOval(
+                                child: Image.memory(
+                                  base64Decode(secretaryProvider.imageBase64),
+                                  width: 64,
+                                  height: 64,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                          : CircleAvatar(
+                              radius: 32,
+                              backgroundColor: Colors.white,
+                              child: Icon(Icons.person, size: 40, color: accentColor),
+                            )),
                   if (!collapsed) ...[
                     const SizedBox(height: 10),
                     Text(
-                      userName?.isNotEmpty == true
+                      (userName != null && userName!.isNotEmpty)
                           ? userName!
-                          : translate(context, 'secretary'),
+                          : (secretaryProvider.fullName.isNotEmpty
+                              ? secretaryProvider.fullName
+                              : translate(context, 'secretary')),
                       style: const TextStyle(
                         fontSize: 16,
                         color: Colors.white,
@@ -147,39 +177,6 @@ class SecretarySidebar extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Widget _buildUserAvatar() {
-    final defaultIcon = CircleAvatar(
-      radius: collapsed ? 18 : 32,
-      backgroundColor: Colors.white,
-      child: Icon(Icons.person, size: collapsed ? 18 : 32, color: accentColor),
-    );
-
-    if (userImageUrl == null || userImageUrl!.isEmpty) {
-      return defaultIcon;
-    }
-
-    try {
-      final imageBytes = base64Decode(
-        userImageUrl!.replaceFirst('data:image/jpeg;base64,', ''),
-      );
-
-      return CircleAvatar(
-        radius: collapsed ? 18 : 32,
-        backgroundColor: Colors.white,
-        child: ClipOval(
-          child: Image.memory(
-            imageBytes,
-            width: collapsed ? 36 : 64,
-            height: collapsed ? 36 : 64,
-            fit: BoxFit.cover,
-          ),
-        ),
-      );
-    } catch (e) {
-      return defaultIcon;
-    }
   }
 
   Widget _buildSidebarItem(

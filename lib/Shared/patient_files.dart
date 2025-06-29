@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 import '../../providers/language_provider.dart';
+import '../../providers/secretary_provider.dart';
 import '../dashboard/student_dashboard.dart';
 import '../Secretry/secretary_sidebar.dart';
 
@@ -34,6 +36,8 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
+  late StreamSubscription<DatabaseEvent> _waitingListSubscription;
+
   final Map<String, Map<String, String>> _translations = {
     'patient_files': {'ar': 'ملفات المرضى', 'en': 'Patient Files'},
     'waiting_list': {'ar': 'قائمة الانتظار', 'en': 'Waiting List'},
@@ -58,13 +62,21 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
     _loadData();
     _searchController.addListener(_filterUsers);
     if (widget.userRole == 'secretary') {
-      _loadSecretaryData();
+      _loadSecretaryDataToProvider();
     }
+    // إضافة مستمع صحيح لقائمة الانتظار
+    _waitingListSubscription = _waitingListRef.onValue.listen((event) {
+      setState(() {
+        waitingList = _parseWaitingSnapshot(event.snapshot);
+        filteredWaitingList = List.from(waitingList);
+      });
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _waitingListSubscription.cancel(); // إلغاء الاشتراك عند التخلص من الصفحة
     super.dispose();
   }
 
@@ -119,7 +131,9 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
     data.forEach((key, value) {
       if (value is Map<dynamic, dynamic>) {
         final waitingData = Map<String, dynamic>.from(value);
-        waitingData['id'] = key.toString();
+        // استخدم id الحقيقي للمريض وليس key الخاص بالـ push
+        // إذا لم يوجد id في الداتا، استخدم key كحل احتياطي
+        waitingData['id'] = value['id']?.toString() ?? key.toString();
         result.add(waitingData);
       }
     });
@@ -224,95 +238,87 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
     ].join(' ');
   }
 
-  Future<void> _loadSecretaryData() async {
+  Future<void> _loadSecretaryDataToProvider() async {
     final user = _auth.currentUser;
     if (user == null) return;
     final snapshot = await _usersRef.child(user.uid).get();
     if (snapshot.exists) {
-      final data = snapshot.value as Map<dynamic, dynamic>;
-      final firstName = data['firstName']?.toString().trim() ?? '';
-      final fatherName = data['fatherName']?.toString().trim() ?? '';
-      final grandfatherName = data['grandfatherName']?.toString().trim() ?? '';
-      final familyName = data['familyName']?.toString().trim() ?? '';
-      final fullName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
-      final imageData = data['image']?.toString() ?? '';
-      Uint8List? imageBytes;
-      if (imageData.isNotEmpty) {
-        try {
-          imageBytes = base64Decode(imageData.replaceFirst('data:image/jpeg;base64,', ''));
-        } catch (e) {
-          imageBytes = null;
-        }
-      }
-      setState(() {
-        _userName = fullName.isNotEmpty ? fullName : '';
-        _userImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
-        _userImageBytes = imageBytes;
-      });
+      final data = Map<String, dynamic>.from(snapshot.value as Map);
+      final secretaryProvider = Provider.of<SecretaryProvider>(context, listen: false);
+      secretaryProvider.setSecretaryData(data);
     }
   }
 
-  Widget? _buildSidebar(BuildContext context) {
-    if (widget.userRole == 'doctor') {
-      // return DoctorSidebar(...); // أضف عند توفر DoctorSidebar
-      return null;
-    } else if (widget.userRole == 'secretary') {
+  // Build the sidebar based on user role
+  Widget _buildSidebar(BuildContext context) {
+    if (widget.userRole == 'secretary') {
+      final secretaryProvider = Provider.of<SecretaryProvider>(context, listen: false);
       return SecretarySidebar(
         primaryColor: primaryColor,
         accentColor: accentColor,
-        userName: _userName,
-        userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : '',
-        onLogout: null,
         parentContext: context,
-        collapsed: false,
-        translate: (ctx, key) => _translate(context, key),
-        pendingAccountsCount: 0,
-        userRole: 'secretary',
+        translate: _translate,
+        userRole: widget.userRole,
+        userName: secretaryProvider.fullName,
+        userImageUrl: secretaryProvider.imageBase64,
       );
     }
-    return null;
+    // For other roles, return an empty widget
+    return const SizedBox.shrink();
   }
 
-  Future<void> _addToWaitingList(Map<String, dynamic> user) async {
-    try {
-      // يمكنك تخصيص الحقول حسب الحاجة
-      final waitingUser = {
-        'name': _getFullName(user), // الاسم الرباعي
-        'phone': user['phone'] ?? '',
-        'id': user['id'] ?? '',
-        'addedAt': DateTime.now().millisecondsSinceEpoch,
-      };
-      await _waitingListRef.child(user['id']).set(waitingUser);
-      await _loadData(); // إعادة تحميل البيانات لتحديث الواجهة
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_translate(context, 'تمت الإضافة إلى قائمة الانتظار'))),
-      );
-    } catch (e) {
-      debugPrint('Error adding to waiting list: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_translate(context, 'error_loading'))),
-      );
-    }
-  }
-
+  // Remove a user from the waiting list
   Future<void> _removeFromWaitingList(String userId) async {
     try {
-      await _waitingListRef.child(userId).remove();
+      final snapshot = await _waitingListRef.orderByChild('id').equalTo(userId).get();
+      if (snapshot.exists) {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        for (final entry in data.entries) {
+          await _waitingListRef.child(entry.key).remove();
+        }
+      }
       await _loadData();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_translate(context, 'remove_from_waiting_list'))),
-      );
     } catch (e) {
       debugPrint('Error removing from waiting list: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_translate(context, 'error_loading'))),
-      );
+    }
+  }
+
+  // Add a user to the waiting list
+  Future<void> _addToWaitingList(Map<String, dynamic> user) async {
+    try {
+      // تحقق إذا كان الشخص موجود مسبقًا في قائمة الانتظار
+      final alreadyInList = waitingList.any((w) => w['id'] == user['id']);
+      if (alreadyInList) {
+        // إظهار رسالة للمستخدم
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_translate(context, 'add_to_waiting_list') + ': ' + _translate(context, 'name') + ' "' + _getFullName(user) + '" ' + 'موجود بالفعل في قائمة الانتظار'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+     final newEntry = {
+  'id': user['id'], // هذا هو نفس userId لكن نسميه صراحة
+  'userId': user['id'], // ✅ هذا هو المطلوب إضافته
+  'name': _getFullName(user),
+  'firstName': user['firstName'] ?? '',
+  'fatherName': user['fatherName'] ?? '',
+  'grandfatherName': user['grandfatherName'] ?? '',
+  'familyName': user['familyName'] ?? '',
+  'phone': user['phone'] ?? '',
+  'birthDate': user['birthDate'] ?? '',
+};
+
+      await _waitingListRef.push().set(newEntry);
+      await _loadData();
+    } catch (e) {
+      debugPrint('Error adding to waiting list: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLargeScreen = MediaQuery.of(context).size.width >= 900;
     return Directionality(
       textDirection: Provider.of<LanguageProvider>(context, listen: false).currentLocale.languageCode == 'ar'
           ? TextDirection.rtl
@@ -392,6 +398,7 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
                                           backgroundColor: Colors.orange,
                                           child: Icon(Icons.timer, color: Colors.white),
                                         ),
+                                        // عرض الاسم الرباعي الكامل في قائمة الانتظار
                                         title: Text(user['name'] ?? '', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
                                         subtitle: Text('${_translate(context, 'phone')}: ${user['phone'] ?? ''}'),
                                         trailing: IconButton(

@@ -11,6 +11,7 @@ import '../Shared/patient_files.dart';
 import '../Shared/waiting_list_page.dart';
 import '../loginpage.dart';
 import '../Secretry/secretary_sidebar.dart';
+import '../../providers/secretary_provider.dart';
 
 class AccountApprovalPage extends StatefulWidget {
   final String? initialUserId;
@@ -24,7 +25,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   List<Map<String, dynamic>> _pendingUsers = [];
-  List<Map<String, dynamic>> _pendingAccounts = [];
   bool _isLoading = true;
   String _userName = '';
   String _userImageUrl = '';
@@ -39,9 +39,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   Map<String, dynamic>? _rejectingUser;
   List<String> _selectedFields = [];
   bool _rejectAll = true;
-
-  // New: Which list to show
-  bool _showPendingUsers = true;
 
   final Map<String, Map<String, String>> _translations = const {
     'approval_title': {'ar': 'الموافقة على الحسابات', 'en': 'Account Approval'},
@@ -87,7 +84,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   @override
   void initState() {
     super.initState();
-    _loadSecretaryData();
+    _loadSecretaryData(); // استخدم الدالة الموجودة فعلياً
     _loadPendingUsers();
     // إذا تم تمرير initialUserId من الإشعار، انتقل مباشرة لتفاصيل هذا الحساب
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -130,7 +127,9 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   Future<void> _loadPendingUsers() async {
     try {
       setState(() => _isLoading = true);
+      // read from pendingUsers instead of pendingAccounts
       final snapshot = await _database.child('pendingUsers').once();
+
       if (snapshot.snapshot.value == null) {
         if (mounted) {
           setState(() {
@@ -140,8 +139,10 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         }
         return;
       }
+
       final usersMap = snapshot.snapshot.value as Map<dynamic, dynamic>? ?? {};
       final usersList = <Map<String, dynamic>>[];
+
       usersMap.forEach((key, value) {
         try {
           final userData =
@@ -152,6 +153,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           debugPrint('Error parsing user data: $e');
         }
       });
+
       if (mounted) {
         setState(() {
           _pendingUsers = usersList;
@@ -160,47 +162,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
       }
     } catch (e) {
       debugPrint('Error loading pending users: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${_translate('error')}: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
-  Future<void> _loadPendingAccounts() async {
-    try {
-      setState(() => _isLoading = true);
-      final snapshot = await _database.child('pendingAccounts').once();
-      if (snapshot.snapshot.value == null) {
-        if (mounted) {
-          setState(() {
-            _pendingAccounts = [];
-            _isLoading = false;
-          });
-        }
-        return;
-      }
-      final usersMap = snapshot.snapshot.value as Map<dynamic, dynamic>? ?? {};
-      final usersList = <Map<String, dynamic>>[];
-      usersMap.forEach((key, value) {
-        try {
-          final userData = Map<String, dynamic>.from(value as Map<dynamic, dynamic>);
-          userData['userId'] = key.toString();
-          usersList.add(userData);
-        } catch (e) {
-          debugPrint('Error parsing pending account: $e');
-        }
-      });
-      if (mounted) {
-        setState(() {
-          _pendingAccounts = usersList;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading pending accounts: $e');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -272,7 +233,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_translate('rejection_success'))),
         );
-        _loadPendingUsers(); // إعادة تفعيل تحديث القائمة بعد الرفض
+        _loadPendingUsers();
       }
     } catch (e) {
       debugPrint('Error rejecting user: $e');
@@ -294,11 +255,8 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         throw Exception('Missing userId or authUid');
       }
 
-      // الصحيح: احذف من pendingUsers وليس pendingAccounts
-      await _database.child('pendingUsers/$userId').remove();
-
-      await _database.child('pendingAccounts/$userId').set({
-        ...userData,
+      // تحديث بيانات المستخدم في pendingUsers مع الحقول المطلوبة للتعديل
+      await _database.child('pendingUsers/$userId').update({
         'rejectionReason': reason,
         'fieldsToEdit': fields,
         'rejectedAt': ServerValue.timestamp,
@@ -311,7 +269,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           SnackBar(content: Text(_translate('rejection_success'))),
         );
         _loadPendingUsers();
-        _loadPendingAccounts();
       }
     } catch (e) {
       debugPrint('Error rejecting user with fields: $e');
@@ -621,7 +578,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
                         );
                         return;
                       }
-
                       if (_rejectAll || _selectedFields.isEmpty) {
                         _rejectUser(user, reason: reason);
                       } else {
@@ -701,26 +657,9 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     if (user == null) return;
     final snapshot = await _database.child('users/${user.uid}').get();
     if (snapshot.exists) {
-      final data = snapshot.value as Map<dynamic, dynamic>;
-      final firstName = data['firstName']?.toString().trim() ?? '';
-      final fatherName = data['fatherName']?.toString().trim() ?? '';
-      final grandfatherName = data['grandfatherName']?.toString().trim() ?? '';
-      final familyName = data['familyName']?.toString().trim() ?? '';
-      final fullName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
-      final imageData = data['image']?.toString() ?? '';
-      Uint8List? imageBytes;
-      if (imageData.isNotEmpty) {
-        try {
-          imageBytes = base64Decode(imageData.replaceFirst('data:image/jpeg;base64,', ''));
-        } catch (e) {
-          imageBytes = null;
-        }
-      }
-      setState(() {
-        _userName = fullName.isNotEmpty ? fullName : '';
-        _userImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
-        _userImageBytes = imageBytes;
-      });
+      final data = Map<String, dynamic>.from(snapshot.value as Map);
+      final secretaryProvider = Provider.of<SecretaryProvider>(context, listen: false);
+      secretaryProvider.setSecretaryData(data);
     }
   }
 
@@ -755,9 +694,21 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     );
   }
 
+  void _logout() async {
+    await _auth.signOut();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final secretaryProvider = Provider.of<SecretaryProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
+    final isLargeScreen = MediaQuery.of(context).size.width >= 800;
+
     return Directionality(
       textDirection:
           languageProvider.isEnglish ? TextDirection.ltr : TextDirection.rtl,
@@ -767,71 +718,43 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           title: Text(_translate('approval_title')),
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
-          leading: Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            ),
-          ),
         ),
         drawer: SecretarySidebar(
           primaryColor: primaryColor,
           accentColor: accentColor,
-          userName: _userName.isNotEmpty ? _userName : null,
-          userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : null,
-          onLogout: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginPage()),
-            );
-          },
+          userName: secretaryProvider.fullName,
+          userImageUrl: secretaryProvider.imageBase64,
+          onLogout: _logout,
           parentContext: context,
           collapsed: false,
           translate: (ctx, key) => _translate(key),
           pendingAccountsCount: _pendingUsers.length,
           userRole: 'secretary',
         ),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              child: Row(
+        body: isLargeScreen
+            ? Row(
                 children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _showPendingUsers ? primaryColor : Colors.grey[300],
-                        foregroundColor: _showPendingUsers ? Colors.white : Colors.black,
-                      ),
-                      onPressed: () async {
-                        setState(() => _showPendingUsers = true);
-                        await _loadPendingUsers();
-                      },
-                      child: Text(languageProvider.isEnglish ? 'New Accounts' : 'الحسابات الجديدة'),
-                    ),
+                  SecretarySidebar(
+                    primaryColor: primaryColor,
+                    accentColor: accentColor,
+                    userName: _userName.isNotEmpty ? _userName : null,
+                    userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : null,
+                    onLogout: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginPage()),
+                      );
+                    },
+                    parentContext: context,
+                    collapsed: false,
+                    translate: (ctx, key) => _translate(key),
+                    pendingAccountsCount: _pendingUsers.length,
+                    userRole: 'secretary',
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: !_showPendingUsers ? primaryColor : Colors.grey[300],
-                        foregroundColor: !_showPendingUsers ? Colors.white : Colors.black,
-                      ),
-                      onPressed: () async {
-                        setState(() => _showPendingUsers = false);
-                        await _loadPendingAccounts();
-                      },
-                      child: Text(languageProvider.isEnglish ? 'Needs Edit' : 'بحاجة لتعديل'),
-                    ),
-                  ),
+                  Expanded(child: _buildMainContent()),
                 ],
-              ),
-            ),
-            Expanded(child: _buildMainContent()),
-          ],
-        ),
+              )
+            : _buildMainContent(),
       ),
     );
   }
@@ -840,20 +763,19 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    final list = _showPendingUsers ? _pendingUsers : _pendingAccounts;
-    if (list.isEmpty) {
+    if (_pendingUsers.isEmpty) {
       return Center(
         child: Text(
-          _showPendingUsers ? _translate('no_pending_users') : 'لا يوجد حسابات بحاجة لتعديل',
+          _translate('no_pending_users'),
           style: TextStyle(fontSize: 18, color: Colors.grey[600]),
         ),
       );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: list.length,
+      itemCount: _pendingUsers.length,
       itemBuilder: (context, index) {
-        return _buildUserCard(list[index]);
+        return _buildUserCard(_pendingUsers[index]);
       },
     );
   }

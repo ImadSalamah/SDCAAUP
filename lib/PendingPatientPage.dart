@@ -4,11 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 
-class PendingPatientPage extends StatelessWidget {
+
+// تحويل الصفحة إلى StatefulWidget لمعاينة الصورة مباشرة
+class PendingPatientPage extends StatefulWidget {
   const PendingPatientPage({super.key});
 
-  static Future<Map<String, dynamic>?> getPendingUserDataByUid(
-      String uid) async {
+  static Future<Map<String, dynamic>?> getPendingUserDataByUid(String uid) async {
     final dbRef = FirebaseDatabase.instance.ref();
     final snapshot = await dbRef.child('pendingUsers/$uid').get();
     if (!snapshot.exists) return null;
@@ -16,12 +17,20 @@ class PendingPatientPage extends StatelessWidget {
   }
 
   @override
+  State<PendingPatientPage> createState() => _PendingPatientPageState();
+}
+
+class _PendingPatientPageState extends State<PendingPatientPage> {
+  String? _localImageBase64; // لمعاينة الصورة الجديدة
+  bool _isUploading = false;
+
+  @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final uid = user?.uid ?? '';
     debugPrint('DEBUG: UID used for pending search: $uid');
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: getPendingUserDataByUid(uid),
+    return FutureBuilder<Map<String, dynamic>?> (
+      future: PendingPatientPage.getPendingUserDataByUid(uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -32,38 +41,25 @@ class PendingPatientPage extends StatelessWidget {
         final userData = snapshot.data!;
         List<String> fieldsToEdit = [];
         bool isRejected = false;
-        if (userData['fieldsToEdit'] is List &&
-            (userData['fieldsToEdit'] as List).isNotEmpty) {
+        if (userData['fieldsToEdit'] is List && (userData['fieldsToEdit'] as List).isNotEmpty) {
           fieldsToEdit = List<String>.from(userData['fieldsToEdit']);
           isRejected = true;
         }
         String? rejectionReason = userData['rejectionReason'];
-        final TextEditingController firstNameController =
-            TextEditingController(text: userData['firstName'] ?? '');
-        final TextEditingController fatherNameController =
-            TextEditingController(text: userData['fatherName'] ?? '');
-        final TextEditingController grandfatherNameController =
-            TextEditingController(text: userData['grandfatherName'] ?? '');
-        final TextEditingController familyNameController =
-            TextEditingController(text: userData['familyName'] ?? '');
-        final TextEditingController idNumberController =
-            TextEditingController(text: userData['idNumber'] ?? '');
+        final TextEditingController firstNameController = TextEditingController(text: userData['firstName'] ?? '');
+        final TextEditingController fatherNameController = TextEditingController(text: userData['fatherName'] ?? '');
+        final TextEditingController grandfatherNameController = TextEditingController(text: userData['grandfatherName'] ?? '');
+        final TextEditingController familyNameController = TextEditingController(text: userData['familyName'] ?? '');
+        final TextEditingController idNumberController = TextEditingController(text: userData['idNumber'] ?? '');
         final TextEditingController birthDateController = TextEditingController(
             text: userData['birthDate'] != null
-                ? DateTime.fromMillisecondsSinceEpoch(userData['birthDate'])
-                    .toString()
-                    .split(' ')[0]
+                ? DateTime.fromMillisecondsSinceEpoch(userData['birthDate']).toString().split(' ')[0]
                 : '');
-        final TextEditingController genderController =
-            TextEditingController(text: userData['gender'] ?? '');
-        final TextEditingController phoneController =
-            TextEditingController(text: userData['phone'] ?? '');
-        final TextEditingController addressController =
-            TextEditingController(text: userData['address'] ?? '');
-        final TextEditingController emailController =
-            TextEditingController(text: userData['email'] ?? '');
-        final TextEditingController imageController =
-            TextEditingController(text: userData['image'] ?? '');
+        final TextEditingController genderController = TextEditingController(text: userData['gender'] ?? '');
+        final TextEditingController phoneController = TextEditingController(text: userData['phone'] ?? '');
+        final TextEditingController addressController = TextEditingController(text: userData['address'] ?? '');
+        final TextEditingController emailController = TextEditingController(text: userData['email'] ?? '');
+        final TextEditingController imageController = TextEditingController(text: userData['image'] ?? '');
         return Scaffold(
           backgroundColor: Colors.white,
           body: Center(
@@ -107,67 +103,48 @@ class PendingPatientPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    if (isRejected && fieldsToEdit.contains('image'))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: Center(
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              userData['image'] != null &&
-                                      userData['image'].toString().isNotEmpty
-                                  ? CircleAvatar(
-                                      radius: 60,
-                                      backgroundColor: Colors.grey[200],
-                                      backgroundImage: MemoryImage(
-                                        base64Decode(userData['image']
-                                            .toString()
-                                            .replaceFirst(
-                                                'data:image/jpeg;base64,', '')),
-                                      ),
-                                    )
-                                  : CircleAvatar(
-                                      radius: 60,
-                                      backgroundColor: Colors.grey[200],
-                                      child: Icon(Icons.person,
-                                          size: 60, color: Colors.grey[600]),
-                                    ),
+                    // صورة المستخدم تظهر دائماً
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Center(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // معاينة الصورة الجديدة إذا تم اختيارها، وإلا الصورة القديمة
+                            if (_localImageBase64 != null && _localImageBase64!.isNotEmpty)
+                              buildSafeCircleAvatar(_localImageBase64!, 60)
+                            else if (userData['image'] != null && userData['image'].toString().isNotEmpty)
+                              buildSafeCircleAvatar(userData['image'].toString(), 60)
+                            else
+                              CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Colors.grey[200],
+                                child: Icon(Icons.person, size: 60, color: Colors.grey[600]),
+                              ),
+                            // زر التعديل يظهر فقط إذا كان الحساب مرفوض ويحتاج تعديل الصورة
+                            if (isRejected && fieldsToEdit.contains('image'))
                               Positioned(
                                 bottom: 0,
                                 right: 0,
                                 child: IconButton(
-                                  icon: Icon(Icons.edit,
-                                      color: Colors.orange[800]),
+                                  icon: Icon(Icons.edit, color: Colors.orange[800]),
                                   onPressed: () async {
                                     final ImagePicker picker = ImagePicker();
-                                    final XFile? picked =
-                                        await picker.pickImage(
-                                            source: ImageSource.gallery,
-                                            imageQuality: 70);
+                                    final XFile? picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
                                     if (picked != null) {
                                       final bytes = await picked.readAsBytes();
-                                      final base64Image =
-                                          'data:image/jpeg;base64,${base64Encode(bytes)}';
-                                      imageController.text = base64Image;
-                                      await FirebaseDatabase.instance
-                                          .ref()
-                                          .child(
-                                              'pendingUsers/${userData['userId']}')
-                                          .update({'image': base64Image});
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content:
-                                                Text('تم تحديث الصورة بنجاح')),
-                                      );
+                                      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+                                      setState(() {
+                                        _localImageBase64 = base64Image;
+                                      });
                                     }
                                   },
                                 ),
                               ),
-                            ],
-                          ),
+                          ],
                         ),
                       ),
+                    ),
                     // قسم المعلومات الشخصية
                     Container(
                       padding: const EdgeInsets.all(20),
@@ -195,10 +172,8 @@ class PendingPatientPage extends StatelessWidget {
                                     prefixIcon: Icon(Icons.person),
                                     border: OutlineInputBorder(),
                                   ),
-                                  readOnly: !(isRejected &&
-                                      fieldsToEdit.contains('firstName')),
-                                  enabled: isRejected &&
-                                      fieldsToEdit.contains('firstName'),
+                                  readOnly: !(isRejected && (fieldsToEdit.contains('firstName'))),
+                                  enabled: isRejected && (fieldsToEdit.contains('firstName')),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -210,10 +185,8 @@ class PendingPatientPage extends StatelessWidget {
                                     prefixIcon: Icon(Icons.person),
                                     border: OutlineInputBorder(),
                                   ),
-                                  readOnly: !(isRejected &&
-                                      fieldsToEdit.contains('fatherName')),
-                                  enabled: isRejected &&
-                                      fieldsToEdit.contains('fatherName'),
+                                  readOnly: !(isRejected && (fieldsToEdit.contains('fatherName'))),
+                                  enabled: isRejected && (fieldsToEdit.contains('fatherName')),
                                 ),
                               ),
                             ],
@@ -229,10 +202,8 @@ class PendingPatientPage extends StatelessWidget {
                                     prefixIcon: Icon(Icons.person),
                                     border: OutlineInputBorder(),
                                   ),
-                                  readOnly: !(isRejected &&
-                                      fieldsToEdit.contains('grandfatherName')),
-                                  enabled: isRejected &&
-                                      fieldsToEdit.contains('grandfatherName'),
+                                  readOnly: !(isRejected && (fieldsToEdit.contains('grandfatherName'))),
+                                  enabled: isRejected && (fieldsToEdit.contains('grandfatherName')),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -244,10 +215,8 @@ class PendingPatientPage extends StatelessWidget {
                                     prefixIcon: Icon(Icons.person),
                                     border: OutlineInputBorder(),
                                   ),
-                                  readOnly: !(isRejected &&
-                                      fieldsToEdit.contains('familyName')),
-                                  enabled: isRejected &&
-                                      fieldsToEdit.contains('familyName'),
+                                  readOnly: !(isRejected && (fieldsToEdit.contains('familyName'))),
+                                  enabled: isRejected && (fieldsToEdit.contains('familyName')),
                                 ),
                               ),
                             ],
@@ -265,10 +234,8 @@ class PendingPatientPage extends StatelessWidget {
                                   ),
                                   keyboardType: TextInputType.number,
                                   maxLength: 9,
-                                  readOnly: !(isRejected &&
-                                      fieldsToEdit.contains('idNumber')),
-                                  enabled: isRejected &&
-                                      fieldsToEdit.contains('idNumber'),
+                                  readOnly: !(isRejected && (fieldsToEdit.contains('idNumber'))),
+                                  enabled: isRejected && (fieldsToEdit.contains('idNumber')),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -280,7 +247,8 @@ class PendingPatientPage extends StatelessWidget {
                                     prefixIcon: Icon(Icons.calendar_today),
                                     border: OutlineInputBorder(),
                                   ),
-                                  readOnly: true, // لا يمكن تعديله هنا
+                                  readOnly: !(isRejected && fieldsToEdit.contains('birthDate')),
+                                  enabled: isRejected && fieldsToEdit.contains('birthDate'),
                                 ),
                               ),
                             ],
@@ -296,10 +264,8 @@ class PendingPatientPage extends StatelessWidget {
                                     prefixIcon: Icon(Icons.wc),
                                     border: OutlineInputBorder(),
                                   ),
-                                  readOnly: !(isRejected &&
-                                      fieldsToEdit.contains('gender')),
-                                  enabled: isRejected &&
-                                      fieldsToEdit.contains('gender'),
+                                  readOnly: !(isRejected && (fieldsToEdit.contains('gender'))),
+                                  enabled: isRejected && (fieldsToEdit.contains('gender')),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -313,10 +279,8 @@ class PendingPatientPage extends StatelessWidget {
                                   ),
                                   keyboardType: TextInputType.phone,
                                   maxLength: 10,
-                                  readOnly: !(isRejected &&
-                                      fieldsToEdit.contains('phone')),
-                                  enabled: isRejected &&
-                                      fieldsToEdit.contains('phone'),
+                                  readOnly: !(isRejected && (fieldsToEdit.contains('phone'))),
+                                  enabled: isRejected && (fieldsToEdit.contains('phone')),
                                 ),
                               ),
                             ],
@@ -329,10 +293,8 @@ class PendingPatientPage extends StatelessWidget {
                               prefixIcon: Icon(Icons.location_on),
                               border: OutlineInputBorder(),
                             ),
-                            readOnly: !(isRejected &&
-                                fieldsToEdit.contains('address')),
-                            enabled:
-                                isRejected && fieldsToEdit.contains('address'),
+                            readOnly: !(isRejected && (fieldsToEdit.contains('address'))),
+                            enabled: isRejected && (fieldsToEdit.contains('address')),
                           ),
                         ],
                       ),
@@ -362,43 +324,38 @@ class PendingPatientPage extends StatelessWidget {
                               prefixIcon: Icon(Icons.email),
                               border: OutlineInputBorder(),
                             ),
-                            readOnly:
-                                !(isRejected && fieldsToEdit.contains('email')),
-                            enabled:
-                                isRejected && fieldsToEdit.contains('email'),
+                            readOnly: !(isRejected && (fieldsToEdit.contains('email'))),
+                            enabled: isRejected && (fieldsToEdit.contains('email')),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 30),
-                    if (isRejected &&
-                        (fieldsToEdit.isNotEmpty ||
-                            fieldsToEdit.contains('image')))
+                    if (isRejected && (fieldsToEdit.isNotEmpty || fieldsToEdit.contains('image')))
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () async {
+                          onPressed: _isUploading ? null : () async {
+                            setState(() { _isUploading = true; });
                             final dbRef = FirebaseDatabase.instance.ref();
                             final updatedData = {
                               'firstName': firstNameController.text.trim(),
                               'fatherName': fatherNameController.text.trim(),
-                              'grandfatherName':
-                                  grandfatherNameController.text.trim(),
+                              'grandfatherName': grandfatherNameController.text.trim(),
                               'familyName': familyNameController.text.trim(),
                               'idNumber': idNumberController.text.trim(),
-                              'birthDate':
-                                  userData['birthDate'], // لا يتم تعديله هنا
+                              'birthDate': (isRejected && fieldsToEdit.contains('birthDate')) ? birthDateController.text.trim() : userData['birthDate'],
                               'gender': genderController.text.trim(),
                               'phone': phoneController.text.trim(),
                               'address': addressController.text.trim(),
                               'email': emailController.text.trim(),
+                              // إذا تم اختيار صورة جديدة، ارفعها، وإلا الصورة القديمة
+                              'image': (_localImageBase64 != null && fieldsToEdit.contains('image')) ? _localImageBase64!.trim() : userData['image'],
                             };
-                            await dbRef
-                                .child('pendingUsers/${userData['userId']}')
-                                .update(updatedData);
+                            await dbRef.child('pendingUsers/$uid').update(updatedData);
+                            setState(() { _isUploading = false; });
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('تم حفظ التعديلات بنجاح')),
+                              const SnackBar(content: Text('تم حفظ التعديلات بنجاح')),
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -408,11 +365,9 @@ class PendingPatientPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          child: const Text('حفظ التعديلات',
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
+                          child: _isUploading
+                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text('حفظ التعديلات', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     const SizedBox(height: 16),
@@ -444,6 +399,25 @@ class PendingPatientPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// دالة avatar الآمنة خارج الكلاس
+Widget buildSafeCircleAvatar(String imageUrl, double radius) {
+  try {
+    final base64Str = imageUrl.replaceFirst('data:image/jpeg;base64,', '');
+    final bytes = base64Decode(base64Str);
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey[200],
+      backgroundImage: MemoryImage(bytes),
+    );
+  } catch (e) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.grey[200],
+      child: Icon(Icons.person, size: radius, color: Colors.grey[600]),
     );
   }
 }

@@ -122,7 +122,7 @@ class _LoginPageState extends State<LoginPage> {
     super.initState();
     _dbRef = FirebaseDatabase.instance.ref();
     _loadRememberMe();
-    _checkAutoLogin();
+    // _checkAutoLogin(); // تم التعليق لمنع الانتقال التلقائي
   }
 
   Future<void> _loadRememberMe() async {
@@ -422,9 +422,9 @@ class _LoginPageState extends State<LoginPage> {
                 : 'هناك مشكلة في بيانات الحساب');
         break;
       default:
-        errorMessage = _translate(context, 'login_error');
-        break;
+        errorMessage = '${_translate(context, 'login_error')} (${e.code})';
     }
+
     _showErrorSnackbar(context, errorMessage);
   }
 

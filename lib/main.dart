@@ -9,6 +9,10 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'providers/language_provider.dart';
 
+// Providers
+import 'providers/patient_provider.dart';
+import 'providers/secretary_provider.dart';
+
 // Pages
 import '../loginpage.dart';
 import 'dashboard/patient_dashboard.dart';
@@ -55,8 +59,12 @@ void main() async {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     runApp(
-      ChangeNotifierProvider(
-        create: (context) => LanguageProvider(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => LanguageProvider()),
+          ChangeNotifierProvider(create: (context) => PatientProvider()),
+          ChangeNotifierProvider(create: (context) => SecretaryProvider()),
+        ],
         child: const MyApp(),
       ),
     );

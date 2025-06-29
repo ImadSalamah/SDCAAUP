@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
 import '../../providers/language_provider.dart';
+import '../../providers/secretary_provider.dart';
+import '../Secretry/secretary_sidebar.dart';
 
 class UsersListPage extends StatefulWidget {
   const UsersListPage({super.key});
@@ -44,10 +46,20 @@ class _UsersListPageState extends State<UsersListPage> {
   @override
   void initState() {
     super.initState();
-    // هنا يجب جلب دور المستخدم الحالي من Firebase أو Provider
-    // لأغراض التوضيح، سنفترض أنه موظف (secretary)
-    _currentUserRole = 'secretary';
+    _loadSecretaryDataToProvider();
     _loadUsers();
+  }
+
+  Future<void> _loadSecretaryDataToProvider() async {
+    final user = FirebaseDatabase.instance.ref('users');
+    final auth = Provider.of<SecretaryProvider>(context, listen: false);
+    // يمكنك تعديل هذا الجزء حسب طريقة جلب بيانات السكرتير
+    // مثال:
+    // final snapshot = await user.child(auth.uid).get();
+    // if (snapshot.exists) {
+    //   final data = Map<String, dynamic>.from(snapshot.value as Map);
+    //   auth.setSecretaryData(data);
+    // }
   }
 
   Future<void> _loadUsers() async {
@@ -59,9 +71,12 @@ class _UsersListPageState extends State<UsersListPage> {
 
         data.forEach((key, value) {
           if (value is Map<dynamic, dynamic>) {
+            final userMap = Map<String, dynamic>.from(value);
+            final realId = userMap['id']?.toString() ?? key.toString();
             users.add({
               'uid': key.toString(),
-              ...Map<String, dynamic>.from(value),
+              'id': realId, // استخدم معرف المستخدم الحقيقي إذا وجد
+              ...userMap,
             });
           }
         });
@@ -277,11 +292,52 @@ class _UsersListPageState extends State<UsersListPage> {
     }
   }
 
+  Future<void> _addToWaitingList(Map<String, dynamic> user) async {
+    try {
+      final DatabaseReference waitingListRef = FirebaseDatabase.instance.ref('waitingList');
+      final String userId = user['id'] ?? user['uid'] ?? '';
+      if (userId.isEmpty) return;
+      // أضف بيانات المريض إلى قائمة الانتظار باستخدام معرف المستخدم الحقيقي كمفتاح
+      await waitingListRef.child(userId).set({
+        'id': userId,
+        'firstName': user['firstName'] ?? '',
+        'fatherName': user['fatherName'] ?? '',
+        'grandfatherName': user['grandfatherName'] ?? '',
+        'familyName': user['familyName'] ?? '',
+        'birthDate': user['birthDate'] ?? '',
+        'phone': user['phoneNumber'] ?? user['phone'] ?? '',
+        'gender': user['gender'] ?? '',
+        'idNumber': user['idNumber'] ?? '',
+        'email': user['email'] ?? '',
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تمت إضافة المريض إلى قائمة الانتظار')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ أثناء الإضافة: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final secretaryProvider = Provider.of<SecretaryProvider>(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(_translate(context, 'users_list')),
+      ),
+      drawer: SecretarySidebar(
+        primaryColor: Colors.blue, // أو اللون المناسب
+        accentColor: Colors.blueAccent, // أو اللون المناسب
+        userName: secretaryProvider.fullName,
+        userImageUrl: secretaryProvider.imageBase64,
+        onLogout: null,
+        parentContext: context,
+        collapsed: false,
+        translate: (ctx, key) => _translate(context, key),
+        pendingAccountsCount: 0,
+        userRole: 'secretary',
       ),
       body: _isLoading
           ? Center(child: Text(_translate(context, 'loading')))
@@ -319,9 +375,15 @@ class _UsersListPageState extends State<UsersListPage> {
               ),
               title: Text(fullName),
               subtitle: Text(user['email']?.toString() ?? ''),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () => _showEditUserDialog(user),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => _showEditUserDialog(user),
+                  ),
+                  // تم إخفاء زر الإضافة إلى قائمة الانتظار بناءً على طلبك
+                ],
               ),
             ),
           );

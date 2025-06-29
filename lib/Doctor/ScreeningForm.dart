@@ -246,44 +246,14 @@ class _ScreeningFormState extends State<ScreeningForm> {
         ),
       );
 
-  Future<void> _saveScreeningToDatabase() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب تسجيل الدخول أولاً')),
-      );
-      return;
-    }
-    final doctorId = user.uid;
-    final patientId =
-        widget.patientData != null && widget.patientData!['id'] != null
-            ? widget.patientData!['id']
-            : null;
-    if (patientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا يوجد معرف للمريض')),
-      );
-      return;
-    }
-    final formData = _collectFormData();
-    final data = {
-      'doctorId': doctorId,
-      'patientId': patientId,
-      'screening': formData,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-    };
-    final dbRef = FirebaseDatabase.instance.ref();
-    await dbRef.child('examinations').child('examinations').push().set(data);
-  }
-
   void _submitForm() async {
     final formData = _collectFormData();
     if (widget.onSave != null) {
       widget.onSave!(formData);
     }
-    await _saveScreeningToDatabase();
+    // لا ترسل إلى قاعدة البيانات هنا، سيتم الإرسال من الصفحة الأم فقط
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حفظ بيانات الفحص المبدئي')),
+      const SnackBar(content: Text('تم حفظ بيانات الفحص المبدئي مؤقتًا')),
     );
   }
 

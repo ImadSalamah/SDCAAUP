@@ -1196,7 +1196,7 @@ PODS:
   - BoringSSL-GRPC/Interface (0.0.37)
   - camera_avfoundation (0.0.1):
     - Flutter
-  - cloud_firestore (5.6.8):
+  - cloud_firestore (5.6.9):
     - Firebase/Firestore (= 11.13.0)
     - firebase_core
     - Flutter
@@ -1219,14 +1219,14 @@ PODS:
   - Firebase/Storage (11.13.0):
     - Firebase/CoreOnly
     - FirebaseStorage (~> 11.13.0)
-  - firebase_auth (5.5.4):
+  - firebase_auth (5.6.0):
     - Firebase/Auth (= 11.13.0)
     - firebase_core
     - Flutter
   - firebase_core (3.14.0):
     - Firebase/CoreOnly (= 11.13.0)
     - Flutter
-  - firebase_database (11.3.6):
+  - firebase_database (11.3.7):
     - Firebase/Database (= 11.13.0)
     - firebase_core
     - Flutter
@@ -1234,7 +1234,7 @@ PODS:
     - Firebase/Messaging (= 11.13.0)
     - firebase_core
     - Flutter
-  - firebase_storage (12.4.6):
+  - firebase_storage (12.4.7):
     - Firebase/Storage (= 11.13.0)
     - firebase_core
     - Flutter
@@ -1642,14 +1642,14 @@ SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
   camera_avfoundation: be3be85408cd4126f250386828e9b1dfa40ab436
-  cloud_firestore: 5c68298ed4398ab73ca3333ab99699add650ec1c
+  cloud_firestore: 2fdc3301bcc486957ff7fa705430a185468c1987
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   Firebase: 3435bc66b4d494c2f22c79fd3aae4c1db6662327
-  firebase_auth: 20e8d19009af204039cd2de28a4e2e642e7aba93
+  firebase_auth: ebc1f561cc3077efebad5005974c9ed58008973b
   firebase_core: 700bac7ed92bb754fd70fbf01d72b36ecdd6d450
-  firebase_database: f35d539994033064281b171909aa2b4a0d97a63d
+  firebase_database: c808dcb003584f9925917e3b84c2a6547de31117
   firebase_messaging: 860c017fcfbb5e27c163062d1d3135388f3ef954
-  firebase_storage: 54cc3c866fe4cb619bacb774bb946014e7609625
+  firebase_storage: 17e3f7e7ee83680abb6aad6a28fe1404bf6b5a53
   FirebaseAppCheckInterop: 06fe5a3799278ae4667e6c432edd86b1030fa3df
   FirebaseAuth: 175cb5503dfdb52191b8ff81cdd52c1d9dee9ac9
   FirebaseAuthInterop: 7087d7a4ee4bc4de019b2d0c240974ed5d89e2fd

@@ -287,95 +287,203 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         _examinedPatients = [];
       });
 
+      // 1. جلب جميع الفحوصات من examinations (flat + nested)
       final DataSnapshot examinationsSnapshot = await _examinationsRef.get();
-      if (!examinationsSnapshot.exists) {
-        setState(() {
-          _isLoading = false;
-          _filteredExaminations = [];
-        });
-        return;
-      }
+      final Map<String, dynamic> examinations = _safeConvertMap(examinationsSnapshot.value);
+      // 2. جلب جميع الفحوصات من doctorExaminations
+      final DataSnapshot doctorExamsSnapshot = await FirebaseDatabase.instance.ref('examinations').get();
+      final Map<String, dynamic> doctorExams = _safeConvertMap(doctorExamsSnapshot.value);
+      // 3. جلب جميع الفحوصات من examinations/examinations (legacy)
+      final DataSnapshot legacyExamsSnapshot = await _examinationsRef.child('examinations').get();
+      final Map<String, dynamic> legacyExams = _safeConvertMap(legacyExamsSnapshot.value);
 
-      final Map<String, dynamic> examinations =
-          _safeConvertMap(examinationsSnapshot.value);
-      final Map<String, Map<String, dynamic>> latestExaminations = {};
+      // نجمع كل الفحوصات في قائمة واحدة (بدون أي deduplication)
+      final List<Map<String, dynamic>> allExaminations = [];
 
-      // تحديد أحدث فحص لكل مريض
-      examinations.forEach((key, value) {
+      // Pass 1: nested examinations (examinations/{patientId}/examinations/)
+      await Future.forEach(examinations.entries, (entry) async {
+        final String parentKey = entry.key;
+        final dynamic patientNode = entry.value;
+        if (patientNode is Map && patientNode.containsKey('examinations')) {
+          final Map<String, dynamic> patientExams = _safeConvertMap(patientNode['examinations']);
+          for (final examEntry in patientExams.entries) {
+            final String examKey = examEntry.key;
+            final examData = _safeConvertMap(examEntry.value);
+            // استخدم patientId من الفحص نفسه إذا وجد، وإلا استخدم parentKey
+            final String? patientId = examData['patientId']?.toString() ?? parentKey;
+            DataSnapshot? patientSnapshot;
+            Map<String, dynamic> patientData = {};
+            try {
+              patientSnapshot = await _patientsRef.child(patientId ?? '').get();
+              if (patientSnapshot.exists) {
+                patientData = _safeConvertMap(patientSnapshot.value);
+                patientData['id'] = patientId;
+              } else {
+                // debugPrint('Nested: patientId $patientId not found in users, will show as unknown');
+                patientData = {'id': patientId, 'firstName': 'Unknown'};
+              }
+            } catch (e) {
+              // debugPrint('Nested: error loading patientId $patientId: $e');
+              patientData = {'id': patientId, 'firstName': 'Unknown'};
+            }
+            final String? doctorId = examData['doctorId']?.toString();
+            Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
+            if (doctorId != null && doctorId.isNotEmpty) {
+              final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
+              if (doctorSnapshot.exists) {
+                doctorData = _safeConvertMap(doctorSnapshot.value);
+                doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
+              }
+            }
+            allExaminations.add({
+              'patient': patientData,
+              'examination': examData,
+              'doctor': doctorData,
+              'examinationId': examKey,
+              'source': 'nested',
+            });
+          }
+        }
+      });
+
+      // Pass 2: flat examinations (examinations/{autoId})
+      await Future.forEach(examinations.entries, (entry) async {
+        final String key = entry.key;
+        final dynamic value = entry.value;
+        if (value is Map && value.containsKey('examinations')) {
+          // debugPrint('Skip key $key: contains nested examinations');
+          return;
+        }
         final examData = _safeConvertMap(value);
         final String? patientId = examData['patientId']?.toString();
-
-        if (patientId == null || patientId.isEmpty) return;
-
-        if (!latestExaminations.containsKey(patientId) ||
-            (examData['timestamp'] ?? 0) >
-                (latestExaminations[patientId]!['examination']['timestamp'] ??
-                    0)) {
-          latestExaminations[patientId] = {
-            'examination': examData,
-            'examinationId': key,
-          };
+        if (patientId == null || patientId.isEmpty) {
+          // debugPrint('Skip key $key: missing patientId');
+          return;
         }
-      });
-
-      // تحميل بيانات المرضى والأطباء
-      final List<Map<String, dynamic>> allExaminations = [];
-      await Future.forEach(latestExaminations.entries, (entry) async {
-        try {
-          final String patientId = entry.key;
-          final examData = entry.value;
-
-          final DataSnapshot patientSnapshot =
-              await _patientsRef.child(patientId).get();
+        final DataSnapshot patientSnapshot = await _patientsRef.child(patientId ?? '').get();
+        if (!mounted) return;
+        if (!patientSnapshot.exists) {
+          // debugPrint('Skip key $key: patientId $patientId not found in users');
+          return;
+        }
+        final Map<String, dynamic> patientData = _safeConvertMap(patientSnapshot.value);
+        patientData['id'] = patientId;
+        final String? doctorId = examData['doctorId']?.toString();
+        Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
+        if (doctorId != null && doctorId.isNotEmpty) {
+          final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
           if (!mounted) return;
-          if (!patientSnapshot.exists) return;
-
-          final Map<String, dynamic> patientData =
-              _safeConvertMap(patientSnapshot.value);
-          patientData['id'] = patientId;
-
-          final String? doctorId =
-              examData['examination']['doctorId']?.toString();
-          Map<String, dynamic> doctorData = {
-            'name': _translate(context, 'unknown')
-          };
-
-          if (doctorId != null && doctorId.isNotEmpty) {
-            final DataSnapshot doctorSnapshot =
-                await _doctorsRef.child(doctorId).get();
-            if (!mounted) return;
-            if (doctorSnapshot.exists) {
-              doctorData = _safeConvertMap(doctorSnapshot.value);
-              doctorData['name'] =
-                  doctorData['fullName'] ?? _translate(context, 'unknown');
-            }
+          if (doctorSnapshot.exists) {
+            doctorData = _safeConvertMap(doctorSnapshot.value);
+            doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
           }
-
-          allExaminations.add({
-            'patient': patientData,
-            'examination': examData['examination'],
-            'doctor': doctorData,
-            'examinationId': examData['examinationId'],
-          });
-        } catch (e) {
-          debugPrint('Error processing patient ${entry.key}: $e');
         }
+        allExaminations.add({
+          'patient': patientData,
+          'examination': examData,
+          'doctor': doctorData,
+          'examinationId': key,
+          'source': 'flat',
+        });
       });
 
-      // ترتيب الفحوصات حسب التاريخ (الأحدث أولاً)
+      // Pass 3: doctorExaminations/{examId}
+      await Future.forEach(doctorExams.entries, (entry) async {
+        final String examKey = entry.key;
+        final examData = _safeConvertMap(entry.value);
+        final String? patientId = examData['patientId']?.toString();
+        if (patientId == null || patientId.isEmpty) return;
+        final DataSnapshot patientSnapshot = await _patientsRef.child(patientId).get();
+        if (!mounted) return;
+        if (!patientSnapshot.exists) return;
+        final Map<String, dynamic> patientData = _safeConvertMap(patientSnapshot.value);
+        patientData['id'] = patientId;
+        final String? doctorId = examData['doctorId']?.toString();
+        Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
+        if (doctorId != null && doctorId.isNotEmpty) {
+          final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
+          if (!mounted) return;
+          if (doctorSnapshot.exists) {
+            doctorData = _safeConvertMap(doctorSnapshot.value);
+            doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
+          }
+        }
+        allExaminations.add({
+          'patient': patientData,
+          'examination': examData,
+          'doctor': doctorData,
+          'examinationId': examKey,
+          'source': 'doctorExaminations',
+        });
+      });
+
+      // Pass 4: legacy examinations (examinations/examinations/{examId})
+      await Future.forEach(legacyExams.entries, (entry) async {
+        final String examKey = entry.key;
+        final examData = _safeConvertMap(entry.value);
+        final String? patientId = examData['patientId']?.toString();
+        if (patientId == null || patientId.isEmpty) return;
+        final DataSnapshot patientSnapshot = await _patientsRef.child(patientId).get();
+        if (!mounted) return;
+        if (!patientSnapshot.exists) return;
+        final Map<String, dynamic> patientData = _safeConvertMap(patientSnapshot.value);
+        patientData['id'] = patientId;
+        final String? doctorId = examData['doctorId']?.toString();
+        Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
+        if (doctorId != null && doctorId.isNotEmpty) {
+          final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
+          if (!mounted) return;
+          if (doctorSnapshot.exists) {
+            doctorData = _safeConvertMap(doctorSnapshot.value);
+            doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
+          }
+        }
+        allExaminations.add({
+          'patient': patientData,
+          'examination': examData,
+          'doctor': doctorData,
+          'examinationId': examKey,
+          'source': 'legacy',
+        });
+      });
+
+      // ترتيب النتائج حسب التاريخ
       allExaminations.sort((a, b) {
         final aTime = a['examination']['timestamp'] ?? 0;
         final bTime = b['examination']['timestamp'] ?? 0;
         return bTime.compareTo(aTime);
       });
 
+      // إزالة الدوبليكيت: الاحتفاظ بأحدث فحص فقط لكل مريض
+      final Map<String, Map<String, dynamic>> latestExamsByPatient = {};
+      for (final exam in allExaminations) {
+        final patientId = exam['patient']?['id']?.toString();
+        if (patientId == null || patientId.isEmpty) continue;
+        final timestamp = exam['examination']?['timestamp'] ?? 0;
+        if (!latestExamsByPatient.containsKey(patientId) ||
+            (timestamp > (latestExamsByPatient[patientId]?['examination']?['timestamp'] ?? 0))) {
+          latestExamsByPatient[patientId] = exam;
+        }
+      }
+      final List<Map<String, dynamic>> deduplicatedExaminations = latestExamsByPatient.values.toList();
+      deduplicatedExaminations.sort((a, b) {
+        final aTime = a['examination']['timestamp'] ?? 0;
+        final bTime = b['examination']['timestamp'] ?? 0;
+        return bTime.compareTo(aTime);
+      });
+
+      // debugPrint('Total examinations loaded (deduplicated): \\${deduplicatedExaminations.length}');
+      // for (var ex in deduplicatedExaminations) {
+      //   debugPrint('ExamId: \\${ex['examinationId']} - PatientId: \\${ex['patient']['id']} - Source: \\${ex['source']}');
+      // }
+
       setState(() {
-        _examinedPatients = allExaminations;
-        _filteredExaminations = List.from(allExaminations);
+        _examinedPatients = deduplicatedExaminations;
+        _filteredExaminations = List.from(deduplicatedExaminations);
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading examinations: $e');
+      // debugPrint('Error loading examinations: $e');
       setState(() {
         _isLoading = false;
         _hasError = true;
@@ -488,16 +596,15 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     final patient = _safeConvertMap(patientExam['patient']);
     final exam = _safeConvertMap(patientExam['examination']);
     final doctor = _safeConvertMap(patientExam['doctor']);
-    final examData = _safeConvertMap(exam['examData']);
-    final screeningData = _safeConvertMap(examData['screening']);
+    final examData = _safeConvertMap(exam['examData'] ?? exam['examData'] ?? {});
+    final screeningData = _safeConvertMap(exam['screening'] ?? exam['screening'] ?? {});
 
     final fullName = _getFullName(patient);
-    final examDate = exam['timestamp'] != null
+    final examDate = (exam['timestamp'] != null && exam['timestamp'] is int)
         ? DateFormat('yyyy-MM-dd HH:mm')
-            .format(DateTime.fromMillisecondsSinceEpoch(exam['timestamp']))
+            .format(DateTime.fromMillisecondsSinceEpoch(exam['timestamp'] as int))
         : _translate(context, 'unknown');
 
-    final bool isLargeScreen = MediaQuery.of(context).size.width >= 900;
     final Color primaryColor = const Color(0xFF2A7A94);
     final Color accentColor = const Color(0xFF4AB8D8);
 
@@ -506,7 +613,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
       MaterialPageRoute(
         builder: (context) => Scaffold(
           appBar: AppBar(
-            automaticallyImplyLeading: false, // لا تظهر سهم الرجوع
+            automaticallyImplyLeading: true, // إظهار سهم الرجوع
             title: Text(
               _translate(context, 'examination_details'),
               style: const TextStyle(color: Colors.white),
@@ -515,8 +622,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             iconTheme: const IconThemeData(color: Colors.white),
             elevation: 2,
             centerTitle: true,
-            leading: null, // تأكيد عدم وجود أيقونة
-            actions: [], // تأكيد عدم وجود أيقونات يمين
+            actions: [],
           ),
           backgroundColor: backgroundColor,
           drawer: (_userRole == 'dental_student'
@@ -544,16 +650,16 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                     _buildDetailItem(_translate(context, 'age'),
                         _calculateAge(context, patient['birthDate'])),
                     _buildDetailItem(_translate(context, 'gender'),
-                        patient['gender'] ?? _translate(context, 'unknown')),
+                        (patient['gender'] ?? _translate(context, 'unknown')).toString()),
                     _buildDetailItem(_translate(context, 'phone'),
-                        patient['phone'] ?? _translate(context, 'no_number')),
+                        (patient['phone'] ?? _translate(context, 'no_number')).toString()),
                   ],
                 ),
                 _buildDetailSection(
                   title: _translate(context, 'examination_information'),
                   children: [
                     _buildDetailItem(_translate(context, 'examining_doctor'),
-                        doctor['name']),
+                        (doctor['name'] ?? _translate(context, 'unknown')).toString()),
                     _buildDetailItem(
                         _translate(context, 'examination_date'), examDate),
                   ],
@@ -568,13 +674,13 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                     title: _translate(context, 'extraoral_examination'),
                     children: [
                       _buildDetailItem(
-                          'TMJ', examData['tmj']?.toString() ?? 'N/A'),
+                          'TMJ', (examData['tmj'] ?? 'N/A').toString()),
                       _buildDetailItem('Lymph Node',
-                          examData['lymphNode']?.toString() ?? 'N/A'),
+                          (examData['lymphNode'] ?? 'N/A').toString()),
                       _buildDetailItem('Patient Profile',
-                          examData['patientProfile']?.toString() ?? 'N/A'),
+                          (examData['patientProfile'] ?? 'N/A').toString()),
                       _buildDetailItem('Lip Competency',
-                          examData['lipCompetency']?.toString() ?? 'N/A'),
+                          (examData['lipCompetency'] ?? 'N/A').toString()),
                     ],
                   ),
                   _buildDetailSection(
@@ -582,25 +688,24 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                     children: [
                       _buildDetailItem(
                           'Incisal Classification',
-                          examData['incisalClassification']?.toString() ??
-                              'N/A'),
+                          (examData['incisalClassification'] ?? 'N/A').toString()),
                       _buildDetailItem(
-                          'Overjet', examData['overjet']?.toString() ?? 'N/A'),
+                          'Overjet', (examData['overjet'] ?? 'N/A').toString()),
                       _buildDetailItem('Overbite',
-                          examData['overbite']?.toString() ?? 'N/A'),
+                          (examData['overbite'] ?? 'N/A').toString()),
                     ],
                   ),
                   _buildDetailSection(
                     title: _translate(context, 'soft_tissue_examination'),
                     children: [
                       _buildDetailItem('Hard Palate',
-                          examData['hardPalate']?.toString() ?? 'N/A'),
+                          (examData['hardPalate'] ?? 'N/A').toString()),
                       _buildDetailItem('Buccal Mucosa',
-                          examData['buccalMucosa']?.toString() ?? 'N/A'),
+                          (examData['buccalMucosa'] ?? 'N/A').toString()),
                       _buildDetailItem('Floor of Mouth',
-                          examData['floorOfMouth']?.toString() ?? 'N/A'),
+                          (examData['floorOfMouth'] ?? 'N/A').toString()),
                       _buildDetailItem('Edentulous Ridge',
-                          examData['edentulousRidge']?.toString() ?? 'N/A'),
+                          (examData['edentulousRidge'] ?? 'N/A').toString()),
                     ],
                   ),
                   if (examData['periodontalChart'] != null &&
@@ -910,9 +1015,11 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
 
   // جلب صورة الأشعة من xray_images حسب patientId أو idNumber
   Future<String?> _getXrayImageForPatient(String? patientId, String? idNumber) async {
-    final String cacheKey = patientId ?? idNumber ?? '';
-    if (_xrayImageCache.containsKey(cacheKey)) {
-      return _xrayImageCache[cacheKey];
+    if (patientId != null && _xrayImageCache.containsKey(patientId)) {
+      return _xrayImageCache[patientId];
+    }
+    if (idNumber != null && _xrayImageCache.containsKey(idNumber)) {
+      return _xrayImageCache[idNumber];
     }
     final ref = FirebaseDatabase.instance.ref('xray_images');
     final snapshot = await ref.get();
@@ -926,12 +1033,14 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         if ((patientId != null && map['patientId']?.toString() == patientId) ||
             (idNumber != null && map['idNumber']?.toString() == idNumber)) {
           final xrayImage = map['xrayImage']?.toString();
-          _xrayImageCache[cacheKey] = xrayImage;
+          if (patientId != null) _xrayImageCache[patientId] = xrayImage;
+          if (idNumber != null) _xrayImageCache[idNumber] = xrayImage;
           return xrayImage;
         }
       }
     }
-    _xrayImageCache[cacheKey] = null;
+    if (patientId != null) _xrayImageCache[patientId] = null;
+    if (idNumber != null) _xrayImageCache[idNumber] = null;
     return null;
   }
 
@@ -940,7 +1049,6 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     final patient = _safeConvertMap(patientExam['patient']);
     final String? patientId = patient['id']?.toString();
     final String? idNumber = patient['idNumber']?.toString();
-    final String cacheKey = patientId ?? idNumber ?? '';
 
     return FutureBuilder<String?>(
       future: _getXrayImageForPatient(patientId, idNumber),
@@ -1054,7 +1162,6 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isLargeScreen = MediaQuery.of(context).size.width >= 900;
     final Color primaryColor = const Color(0xFF2A7A94);
     final Color accentColor = const Color(0xFF4AB8D8);
     return Scaffold(

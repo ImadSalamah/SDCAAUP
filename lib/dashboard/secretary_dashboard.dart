@@ -38,8 +38,6 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
   final int _retryCount = 0;
   final int _maxRetries = 3;
 
-  bool _isSidebarCollapsed = false; // حالة السايد بار
-
   bool hasNewNotification = false;
 
   final Map<String, Map<String, String>> _translations = {
@@ -76,7 +74,6 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
   @override
   void initState() {
     super.initState();
-    _isSidebarCollapsed = true; // السايد بار مغلقة افتراضيًا
     _initializeReferences();
     _setupRealtimeListener();
     _loadData();
@@ -315,15 +312,13 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
               ),
             ),
             centerTitle: true,
-            leading: IconButton(
-              icon: Icon(_isSidebarCollapsed ? Icons.menu : Icons.menu_open, color: Colors.white),
-              onPressed: () {
-                if (mounted) {
-                  setState(() {
-                    _isSidebarCollapsed = !_isSidebarCollapsed;
-                  });
-                }
-              },
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: Icon(Icons.menu, color: Colors.white),
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+              ),
             ),
             actions: [
               IconButton(
@@ -368,28 +363,19 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
               ),
             ],
           ),
-          body: Row(
-            children: [
-              if (!_isSidebarCollapsed)
-                SizedBox(
-                  width: 250,
-                  child: SecretarySidebar(
-                    primaryColor: primaryColor,
-                    accentColor: accentColor,
-                    userName: _userName.isNotEmpty ? _userName : _translate(context, 'secretary'),
-                    userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : '',
-                    onLogout: _logout,
-                    parentContext: context,
-                    collapsed: _isSidebarCollapsed,
-                    translate: (ctx, key) => _translate(context, key),
-                    pendingAccountsCount: pendingAccounts.length,
-                    userRole: 'secretary',
-                  ),
-                ),
-              Expanded(child: _buildBody(context, isLargeScreen: isLargeScreen)),
-            ],
+          drawer: SecretarySidebar(
+            primaryColor: primaryColor,
+            accentColor: accentColor,
+            userName: _userName.isNotEmpty ? _userName : _translate(context, 'secretary'),
+            userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : '',
+            onLogout: _logout,
+            parentContext: context,
+            collapsed: false, // Drawer always expanded
+            translate: (ctx, key) => _translate(context, key),
+            pendingAccountsCount: pendingAccounts.length,
+            userRole: 'secretary',
           ),
-          bottomNavigationBar: _buildBottomNavigation(context),
+          body: _buildBody(context, isLargeScreen: isLargeScreen),
         ),
       ),
     );
@@ -444,7 +430,6 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
 
     final mediaQuery = MediaQuery.of(context);
     final isSmallScreen = mediaQuery.size.width < 350;
-    final crossAxisCount = isLargeScreen ? 3 : 2;
 
     return Stack(
       children: [
@@ -453,177 +438,253 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
             color: Colors.white,
           ),
         ),
-        SingleChildScrollView(
-          padding: EdgeInsets.only(bottom: mediaQuery.padding.bottom + 20),
-          child: Column(
-            children: [
-              // User info section
-              Container(
-                margin: const EdgeInsets.all(20),
-                height: isSmallScreen ? 180 : 200,
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('lib/assets/backgrownd.png'),
-                    fit: BoxFit.cover,
-                  ),
-                  color: Color(0x4D000000),
-                  borderRadius: BorderRadius.all(Radius.circular(15)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
+        SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: mediaQuery.padding.bottom + 80, // Increased padding for bottom nav
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // Prevent overflow
+              children: [
+                // User info section
+                Container(
+                  margin: const EdgeInsets.all(20),
+                  height: isSmallScreen ? 180 : 200,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('lib/assets/backgrownd.png'),
+                      fit: BoxFit.cover,
                     ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0x33000000),
-                        borderRadius: BorderRadius.circular(15),
+                    color: Color(0x4D000000),
+                    borderRadius: BorderRadius.all(Radius.circular(15)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
                       ),
-                    ),
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _userImageUrl.isNotEmpty && _userImageBytes != null
-                              ? CircleAvatar(
-                                  radius: isSmallScreen ? 30 : 40,
-                                  backgroundColor: Color.fromARGB(
-                                    (Colors.white.a * 255.0 * 0.8).round() &
-                                        0xff,
-                                    (Colors.white.r * 255.0).round() & 0xff,
-                                    (Colors.white.g * 255.0).round() & 0xff,
-                                    (Colors.white.b * 255.0).round() & 0xff,
-                                  ),
-                                  child: ClipOval(
-                                    child: Image.memory(
-                                      _userImageBytes!,
-                                      width: isSmallScreen ? 60 : 80,
-                                      height: isSmallScreen ? 60 : 80,
-                                      fit: BoxFit.cover,
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0x33000000),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _userImageUrl.isNotEmpty && _userImageBytes != null
+                                ? CircleAvatar(
+                                    radius: isSmallScreen ? 30 : 40,
+                                    backgroundColor: Color.fromARGB(
+                                      (Colors.white.a * 255.0 * 0.8).round() &
+                                          0xff,
+                                      (Colors.white.r * 255.0).round() & 0xff,
+                                      (Colors.white.g * 255.0).round() & 0xff,
+                                      (Colors.white.b * 255.0).round() & 0xff,
+                                    ),
+                                    child: ClipOval(
+                                      child: Image.memory(
+                                        _userImageBytes!,
+                                        width: isSmallScreen ? 60 : 80,
+                                        height: isSmallScreen ? 60 : 80,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  )
+                                : CircleAvatar(
+                                    radius: isSmallScreen ? 30 : 40,
+                                    backgroundColor: Color.fromARGB(
+                                      (Colors.white.a * 255.0 * 0.8).round() &
+                                          0xff,
+                                      (Colors.white.r * 255.0).round() & 0xff,
+                                      (Colors.white.g * 255.0).round() & 0xff,
+                                      (Colors.white.b * 255.0).round() & 0xff,
+                                    ),
+                                    child: Icon(
+                                      Icons.person,
+                                      size: isSmallScreen ? 30 : 40,
+                                      color: accentColor,
                                     ),
                                   ),
-                                )
-                              : CircleAvatar(
-                                  radius: isSmallScreen ? 30 : 40,
-                                  backgroundColor: Color.fromARGB(
-                                    (Colors.white.a * 255.0 * 0.8).round() &
-                                        0xff,
-                                    (Colors.white.r * 255.0).round() & 0xff,
-                                    (Colors.white.g * 255.0).round() & 0xff,
-                                    (Colors.white.b * 255.0).round() & 0xff,
-                                  ),
-                                  child: Icon(
-                                    Icons.person,
-                                    size: isSmallScreen ? 30 : 40,
-                                    color: accentColor,
-                                  ),
+                            const SizedBox(height: 15),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                _userName,
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 16 : 20,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                          const SizedBox(height: 15),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              _userName,
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 16 : 20,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                // تم تصحيح تكرار البراميترز
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            _translate(context, 'secretary'),
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 14 : 16,
-                              color: Colors.white,
+                            const SizedBox(height: 5),
+                            Text(
+                              _translate(context, 'secretary'),
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 14 : 16,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              // Main feature boxes
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                  childAspectRatio: 1.1,
-                  children: [
-                    _buildFeatureBox(
-                      context,
-                      Icons.folder,
-                      _translate(context, 'patient_files'),
-                      primaryColor,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => PatientFilesPage(userRole: 'secretary')),
-                        );
-                      },
-                    ),
-                    _buildFeatureBox(
-                      context,
-                      Icons.person_add,
-                      _translate(context, 'add_patient'),
-                      Colors.green,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const AddPatientPage()),
-                        );
-                      },
-                    ),
-                    _buildFeatureBox(
-                      context,
-                      Icons.verified_user,
-                      _translate(context, 'approve_accounts'),
-                      Colors.orange,
-                      badgeCount: pendingAccounts.length,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const AccountApprovalPage()),
-                        );
-                      },
-                    ),
-                    _buildFeatureBox(
-                      context,
-                      Icons.list_alt, // أيقونة القائمة بدلاً من أيقونة الملف
-                      _translate(context,
-                          'waiting_list'), // استخدام ترجمة "قائمة الانتظار" بدلاً من "ملفات المرضى"
-                      primaryColor,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const WaitingListPage(userRole: 'secretary'),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                // Main feature boxes
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: isSmallScreen
+                      ? Column(
+                          children: [
+                            _buildFeatureBox(
+                              context,
+                              Icons.folder,
+                              _translate(context, 'patient_files'),
+                              primaryColor,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => PatientFilesPage(userRole: 'secretary')),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 15),
+                            _buildFeatureBox(
+                              context,
+                              Icons.person_add,
+                              _translate(context, 'add_patient'),
+                              Colors.green,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const AddPatientPage()),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 15),
+                            _buildFeatureBox(
+                              context,
+                              Icons.verified_user,
+                              _translate(context, 'approve_accounts'),
+                              Colors.orange,
+                              badgeCount: pendingAccounts.length,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => const AccountApprovalPage()),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 15),
+                            _buildFeatureBox(
+                              context,
+                              Icons.list_alt,
+                              _translate(context, 'waiting_list'),
+                              primaryColor,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const WaitingListPage(userRole: 'secretary'),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        )
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final crossAxisCount = isLargeScreen ? 3 : 2;
+                            final rowCount = (4 / crossAxisCount).ceil();
+                            final boxHeight = 130.0;
+                            final gridHeight = rowCount * boxHeight + (rowCount - 1) * 15;
+                            return SizedBox(
+                              height: gridHeight,
+                              child: GridView.count(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 15,
+                                mainAxisSpacing: 15,
+                                childAspectRatio: 1.1,
+                                children: [
+                                  _buildFeatureBox(
+                                    context,
+                                    Icons.folder,
+                                    _translate(context, 'patient_files'),
+                                    primaryColor,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => PatientFilesPage(userRole: 'secretary')),
+                                      );
+                                    },
+                                  ),
+                                  _buildFeatureBox(
+                                    context,
+                                    Icons.person_add,
+                                    _translate(context, 'add_patient'),
+                                    Colors.green,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => const AddPatientPage()),
+                                      );
+                                    },
+                                  ),
+                                  _buildFeatureBox(
+                                    context,
+                                    Icons.verified_user,
+                                    _translate(context, 'approve_accounts'),
+                                    Colors.orange,
+                                    badgeCount: pendingAccounts.length,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => const AccountApprovalPage()),
+                                      );
+                                    },
+                                  ),
+                                  _buildFeatureBox(
+                                    context,
+                                    Icons.list_alt,
+                                    _translate(context, 'waiting_list'),
+                                    primaryColor,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const WaitingListPage(userRole: 'secretary'),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -715,84 +776,6 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                   ),
                 ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavigation(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final isSmallScreen = mediaQuery.size.width < 350;
-    final isArabic = _isArabic(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        border:
-            Border(top: BorderSide(color: Colors.grey.shade300, width: 0.5)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 60 + mediaQuery.padding.bottom,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: mediaQuery.padding.bottom),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildBottomNavItem(
-                    context, Icons.home, 'home', isSmallScreen, isArabic),
-                _buildBottomNavItem(context, Icons.settings, 'settings',
-                    isSmallScreen, isArabic),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(
-    BuildContext context,
-    IconData icon,
-    String labelKey,
-    bool isSmallScreen,
-    bool isArabic,
-  ) {
-    final text = _translate(context, labelKey);
-
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // Handle navigation
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: isSmallScreen ? 20 : 24,
-                  color: primaryColor,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: isArabic
-                        ? (isSmallScreen ? 8 : 10)
-                        : (isSmallScreen ? 9 : 11),
-                    color: primaryColor,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
           ),
         ),
       ),

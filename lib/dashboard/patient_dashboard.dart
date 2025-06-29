@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../providers/language_provider.dart';
+import '../providers/patient_provider.dart';
 import '../loginpage.dart';
 import '../notifications_page.dart';
 import '../patient/patient_prescriptions_page.dart';
@@ -117,6 +118,9 @@ class _PatientDashboardState extends State<PatientDashboard> {
   }
 
   void _updatePatientData(Map<dynamic, dynamic> data) {
+    final patientProvider = Provider.of<PatientProvider>(context, listen: false);
+    patientProvider.setPatientData(Map<String, dynamic>.from(data));
+
     final firstName = data['firstName']?.toString().trim() ?? '';
     final fatherName = data['fatherName']?.toString().trim() ?? '';
     final grandfatherName = data['grandfatherName']?.toString().trim() ?? '';
@@ -129,13 +133,20 @@ class _PatientDashboardState extends State<PatientDashboard> {
       if (familyName.isNotEmpty) familyName,
     ].join(' ');
 
-    final imageData = data['image']?.toString() ?? '';
+    final imageData = data['image']?.toString().trim() ?? '';
+    // Remove any prefix if present
+    String cleanBase64 = imageData;
+    if (cleanBase64.startsWith('data:image')) {
+      final commaIdx = cleanBase64.indexOf(',');
+      if (commaIdx != -1) {
+        cleanBase64 = cleanBase64.substring(commaIdx + 1);
+      }
+    }
 
     setState(() {
       _patientName =
           fullName.isNotEmpty ? fullName : _translate(context, 'patient');
-      _patientImageUrl =
-          imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
+      _patientImageUrl = cleanBase64;
       _isLoading = false;
       _hasError = false;
     });
@@ -291,7 +302,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
             MaterialPageRoute(
               builder: (context) => PatientAppointmentsPage(
                 patientUid: user.uid,
-                patientName: _patientName,
               ),
             ),
           );
@@ -310,14 +320,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
         break;
       case '/patient_profile':
         _patientRef.get().then((snapshot) {
-          final data = Map<String, dynamic>.from(snapshot.value as Map);
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => PatientProfilePage(
-                patientData: data,
-                patientImageUrl: _patientImageUrl,
-              ),
+              builder: (context) => const PatientProfilePage(),
             ),
           );
         });
@@ -398,8 +404,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
           drawer: PatientSidebar(
             onNavigate: _handleSidebarNavigation,
             currentRoute: ModalRoute.of(context)?.settings.name ?? '/patient_dashboard',
-            patientName: _patientName,
-            patientImageUrl: _patientImageUrl,
           ),
           body: Builder(
             builder: (context) {
@@ -543,23 +547,24 @@ class _PatientDashboardState extends State<PatientDashboard> {
                                 _patientImageUrl.isNotEmpty
                                     ? CircleAvatar(
                                         radius: isSmallScreen ? 30 : 40,
-                                        backgroundColor:
-                                            Colors.white.withValues(alpha: 0.8),
+                                        backgroundColor: Colors.white.withOpacity(0.8),
                                         child: ClipOval(
                                           child: Image.memory(
-                                            base64.decode(
-                                                _patientImageUrl.replaceFirst(
-                                                    'data:image/jpeg;base64,', '')),
+                                            base64.decode(_patientImageUrl),
                                             width: isSmallScreen ? 60 : 80,
                                             height: isSmallScreen ? 60 : 80,
                                             fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => Icon(
+                                              Icons.person,
+                                              size: isSmallScreen ? 30 : 40,
+                                              color: accentColor,
+                                            ),
                                           ),
                                         ),
                                       )
                                     : CircleAvatar(
                                         radius: isSmallScreen ? 30 : 40,
-                                        backgroundColor:
-                                            Colors.white.withValues(alpha: 0.8),
+                                        backgroundColor: Colors.white.withOpacity(0.8),
                                         child: Icon(
                                           Icons.person,
                                           size: isSmallScreen ? 30 : 40,
@@ -617,7 +622,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
                                   MaterialPageRoute(
                                     builder: (context) => PatientAppointmentsPage(
                                       patientUid: user.uid,
-                                      patientName: _patientName,
                                     ),
                                   ),
                                 );
@@ -647,15 +651,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
                             _translate(context, 'profile'),
                             Colors.purple,
                             () async {
-                              final snapshot = await _patientRef.get();
-                              final data = Map<String, dynamic>.from(snapshot.value as Map);
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => PatientProfilePage(
-                                    patientData: data,
-                                    patientImageUrl: _patientImageUrl,
-                                  ),
+                                  builder: (context) => const PatientProfilePage(),
                                 ),
                               );
                             },
@@ -720,23 +719,24 @@ class _PatientDashboardState extends State<PatientDashboard> {
                           _patientImageUrl.isNotEmpty
                               ? CircleAvatar(
                                   radius: isSmallScreen ? 30 : 40,
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.8),
+                                  backgroundColor: Colors.white.withOpacity(0.8),
                                   child: ClipOval(
                                     child: Image.memory(
-                                      base64.decode(
-                                          _patientImageUrl.replaceFirst(
-                                              'data:image/jpeg;base64,', '')),
+                                      base64.decode(_patientImageUrl),
                                       width: isSmallScreen ? 60 : 80,
                                       height: isSmallScreen ? 60 : 80,
                                       fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Icon(
+                                        Icons.person,
+                                        size: isSmallScreen ? 30 : 40,
+                                        color: accentColor,
+                                      ),
                                     ),
                                   ),
                                 )
                               : CircleAvatar(
                                   radius: isSmallScreen ? 30 : 40,
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.8),
+                                  backgroundColor: Colors.white.withOpacity(0.8),
                                   child: Icon(
                                     Icons.person,
                                     size: isSmallScreen ? 30 : 40,
@@ -794,7 +794,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
                             MaterialPageRoute(
                               builder: (context) => PatientAppointmentsPage(
                                 patientUid: user.uid,
-                                patientName: _patientName,
                               ),
                             ),
                           );
@@ -824,15 +823,10 @@ class _PatientDashboardState extends State<PatientDashboard> {
                       _translate(context, 'profile'),
                       Colors.purple,
                       () async {
-                        final snapshot = await _patientRef.get();
-                        final data = Map<String, dynamic>.from(snapshot.value as Map);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => PatientProfilePage(
-                              patientData: data,
-                              patientImageUrl: _patientImageUrl,
-                            ),
+                            builder: (context) => const PatientProfilePage(),
                           ),
                         );
                       },
@@ -873,7 +867,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

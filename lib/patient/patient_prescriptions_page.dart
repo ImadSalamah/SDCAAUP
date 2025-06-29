@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'dart:convert';
 import 'patient_sidebar.dart';
 import '../dashboard/patient_dashboard.dart';
 import 'patient_profile_page.dart';
@@ -17,38 +16,11 @@ class PatientPrescriptionsPage extends StatefulWidget {
 class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
   List<Map<dynamic, dynamic>> prescriptions = [];
   bool isLoading = true;
-  String patientName = '';
-  String patientImageUrl = '';
-  bool patientInfoLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadPrescriptions();
-    _loadPatientInfo();
-  }
-
-  void _loadPatientInfo() async {
-    final userSnap = await FirebaseDatabase.instance.ref('users/${widget.patientId}').get();
-    if (userSnap.exists && userSnap.value != null) {
-      final userData = Map<String, dynamic>.from(userSnap.value as Map);
-      final firstName = userData['firstName']?.toString().trim() ?? '';
-      final fatherName = userData['fatherName']?.toString().trim() ?? '';
-      final grandfatherName = userData['grandfatherName']?.toString().trim() ?? '';
-      final familyName = userData['familyName']?.toString().trim() ?? '';
-      setState(() {
-        patientName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
-        final imageData = userData['image']?.toString() ?? '';
-        patientImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';
-        patientInfoLoading = false;
-      });
-    } else {
-      setState(() {
-        patientName = '';
-        patientImageUrl = '';
-        patientInfoLoading = false;
-      });
-    }
   }
 
   void _loadPrescriptions() async {
@@ -91,23 +63,11 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
         Navigator.pushNamed(context, '/medical_records');
         break;
       case '/patient_appointments':
-        // جلب اسم المريض من قاعدة البيانات
-        String patientName = '';
-        final userSnap = await FirebaseDatabase.instance.ref('users/${widget.patientId}').get();
-        if (userSnap.exists && userSnap.value != null) {
-          final userData = Map<String, dynamic>.from(userSnap.value as Map);
-          final firstName = userData['firstName']?.toString().trim() ?? '';
-          final fatherName = userData['fatherName']?.toString().trim() ?? '';
-          final grandfatherName = userData['grandfatherName']?.toString().trim() ?? '';
-          final familyName = userData['familyName']?.toString().trim() ?? '';
-          patientName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
-        }
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PatientAppointmentsPage(
               patientUid: widget.patientId,
-              patientName: patientName,
             ),
           ),
         );
@@ -116,25 +76,10 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
         // Already here
         break;
       case '/patient_profile':
-        // جلب بيانات المريض من قاعدة البيانات
-        final ref = FirebaseDatabase.instance.ref('users/${widget.patientId}');
-        final userSnap = await ref.get();
-        Map<String, dynamic> patientData = {};
-        String patientImageUrl = '';
-        if (userSnap.exists && userSnap.value != null) {
-          patientData = Map<String, dynamic>.from(userSnap.value as Map);
-          final imageData = patientData['image']?.toString() ?? '';
-          if (imageData.isNotEmpty) {
-            patientImageUrl = 'data:image/jpeg;base64,$imageData';
-          }
-        }
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PatientProfilePage(
-              patientData: patientData,
-              patientImageUrl: patientImageUrl,
-            ),
+            builder: (context) => const PatientProfilePage(),
           ),
         );
         break;
@@ -158,8 +103,6 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
       drawer: PatientSidebar(
         onNavigate: _handleSidebarNavigation,
         currentRoute: '/patient_prescriptions',
-        patientName: patientName,
-        patientImageUrl: patientImageUrl,
       ),
       body: Container(
         width: double.infinity,

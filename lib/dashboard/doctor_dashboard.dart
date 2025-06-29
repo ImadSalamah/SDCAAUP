@@ -65,6 +65,8 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
     'sign_out_error': {'ar': 'خطأ في تسجيل الخروج', 'en': 'Sign out error'},
     'supervision_groups': {'ar': 'شعب الإشراف', 'en': 'Supervision Groups'},
     'examined_patients': {'ar': 'المرضى المفحوصين', 'en': 'Examined Patients'},
+    'prescription': {'ar': 'وصفة طبية', 'en': 'Prescription'},
+    'xray_request': {'ar': 'طلب أشعة', 'en': 'X-ray Request'},
     'home': {'ar': 'الرئيسية', 'en': 'Home'},
     'show_sidebar': {'ar': 'إظهار القائمة', 'en': 'Show Sidebar'},
     'hide_sidebar': {'ar': 'إخفاء القائمة', 'en': 'Hide Sidebar'},

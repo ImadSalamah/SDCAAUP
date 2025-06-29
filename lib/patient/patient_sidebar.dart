@@ -3,26 +3,26 @@ import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
 import '../loginpage.dart';
 import 'dart:convert';
+import '../providers/patient_provider.dart';
 
 class PatientSidebar extends StatelessWidget {
   final Function(String route) onNavigate;
   final String currentRoute;
-  final String patientName;
-  final String patientImageUrl;
 
   const PatientSidebar({
     Key? key,
     required this.onNavigate,
     required this.currentRoute,
-    required this.patientName,
-    required this.patientImageUrl,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final patientProvider = Provider.of<PatientProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final isArabic = languageProvider.currentLocale.languageCode == 'ar';
     final primaryColor = const Color(0xFF2A7A94);
+    final patientName = patientProvider.fullName;
+    final patientImageUrl = patientProvider.imageBase64;
 
     return Drawer(
       child: Directionality(
@@ -33,17 +33,7 @@ class PatientSidebar extends StatelessWidget {
             UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: primaryColor),
               currentAccountPicture: patientImageUrl.isNotEmpty
-                  ? CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: ClipOval(
-                        child: Image.memory(
-                          base64.decode(patientImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    )
+                  ? _buildSafeAvatar(patientImageUrl)
                   : const CircleAvatar(
                       backgroundColor: Colors.white,
                       child: Icon(Icons.person, color: Color(0xFF2A7A94), size: 36),
@@ -112,4 +102,32 @@ class PatientSidebar extends StatelessWidget {
       },
     );
   }
+
+  Widget _buildSafeAvatar(String base64String) {
+    try {
+      final bytes = base64.decode(_cleanBase64(base64String));
+      return CircleAvatar(
+        backgroundColor: Colors.white,
+        child: ClipOval(
+          child: Image.memory(
+            bytes,
+            width: 60,
+            height: 60,
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } catch (e) {
+      return const CircleAvatar(
+        backgroundColor: Colors.white,
+        child: Icon(Icons.person, color: Color(0xFF2A7A94), size: 36),
+      );
+    }
+  }
+}
+
+String _cleanBase64(String base64String) {
+  // يزيل أي بادئة data:image/*;base64, إن وجدت
+  final regex = RegExp(r'^data:image\/[^;]+;base64,');
+  return base64String.replaceFirst(regex, '');
 }
