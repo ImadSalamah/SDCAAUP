@@ -474,159 +474,255 @@ class _LoginPageState extends State<LoginPage> {
           textDirection: languageProvider.isEnglish
               ? TextDirection.ltr
               : TextDirection.rtl,
-          child: Scaffold(
-            backgroundColor: Colors.white,
-            appBar: AppBar(
-              backgroundColor: primaryColor,
-              elevation: 0,
-              title: Text(
-                _translate(context, 'app_name'),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.language, color: Colors.white),
-                  onPressed: () => languageProvider.toggleLanguage(),
-                ),
-              ],
-            ),
-            body: Center(
-              child: SingleChildScrollView(
-                child: Container(
-                  width: double.infinity,
-                  decoration: isWeb
-                      ? BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              primaryColor,
-                              accentColor.withOpacity(0.7),
-                              Colors.white.withOpacity(0.7),
-                            ],
+          child: isWeb
+              ? Stack(
+                  children: [
+                    // Gradient background
+                    Container(
+                      width: double.infinity,
+                      height: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            primaryColor,
+                            accentColor.withOpacity(0.7),
+                            Colors.white.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Scaffold(
+                      backgroundColor: Colors.transparent, // مهم لجعل الخلفية شفافة
+                      appBar: AppBar(
+                        backgroundColor: primaryColor,
+                        elevation: 0,
+                        title: Text(
+                          _translate(context, 'app_name'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                        )
-                      : null,
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.all(isWeb ? 40.0 : 24.0),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: isWeb ? 420 : double.infinity,
-                            ),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
-                                  const SizedBox(height: 20),
-                                  Image.asset(
-                                    "lib/assets/aauplogo.png",
-                                    width: isWeb
-                                        ? 450
-                                        : 200, // تكبير اللوجو للشاشات الكبيرة
-                                  ),
-                                  const SizedBox(height: 30),
-                                  Container(
-                                    padding: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                          color: Colors.grey.shade300),
-                                      borderRadius: BorderRadius.circular(10),
-                                      color: isWeb ? Colors.white : null,
-                                      boxShadow: isWeb
-                                          ? [
-                                              const BoxShadow(
-                                                color: Colors.black12,
-                                                blurRadius: 12,
-                                                offset: Offset(0, 4),
-                                              ),
-                                            ]
-                                          : [],
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: ChoiceChip(
-                                                label: Text(_translate(
-                                                    context, 'patient')),
-                                                selected: _isPatient,
-                                                selectedColor: primaryColor,
-                                                labelStyle: TextStyle(
-                                                  color: _isPatient
-                                                      ? Colors.white
-                                                      : Colors.black,
-                                                ),
-                                                onSelected: (_) => setState(() {
-                                                  _isPatient = true;
-                                                  _usernameController
-                                                      .clear(); // مسح اسم المستخدم عند اختيار مريض
-                                                }),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: ChoiceChip(
-                                                label: Text(_translate(
-                                                    context, 'staff')),
-                                                selected: !_isPatient,
-                                                selectedColor: primaryColor,
-                                                labelStyle: TextStyle(
-                                                  color: !_isPatient
-                                                      ? Colors.white
-                                                      : Colors.black,
-                                                ),
-                                                onSelected: (_) => setState(() {
-                                                  _isPatient = false;
-                                                  _emailController
-                                                      .clear(); // مسح الإيميل عند اختيار موظف/طبيب
-                                                }),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 30),
-                                        Text(
-                                          _translate(context, 'login'),
-                                          style: TextStyle(
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.bold,
-                                            color: primaryColor,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        actions: [
+                          IconButton(
+                            icon: const Icon(Icons.language, color: Colors.white),
+                            onPressed: () => languageProvider.toggleLanguage(),
+                          ),
+                        ],
+                      ),
+                      body: _buildLoginBody(context, constraints, isWeb, languageProvider),
+                    ),
+                  ],
+                )
+              : Scaffold(
+                  backgroundColor: Colors.white,
+                  appBar: AppBar(
+                    backgroundColor: primaryColor,
+                    elevation: 0,
+                    title: Text(
+                      _translate(context, 'app_name'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.language, color: Colors.white),
+                        onPressed: () => languageProvider.toggleLanguage(),
+                      ),
+                    ],
+                  ),
+                  body: _buildLoginBody(context, constraints, isWeb, languageProvider),
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoginBody(BuildContext context, BoxConstraints constraints, bool isWeb, LanguageProvider languageProvider) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWeb = constraints.maxWidth > 700;
+        return SingleChildScrollView(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight,
+              ),
+              width: double.infinity,
+              decoration: isWeb ? null : null, // التدرج أصبح في الخلفية
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.all(isWeb ? 40.0 : 24.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: isWeb ? 420 : double.infinity,
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 20),
+                              Image.asset(
+                                "lib/assets/aauplogo.png",
+                                width: isWeb
+                                    ? 450
+                                    : 200, // تكبير اللوجو للشاشات الكبيرة
+                              ),
+                              const SizedBox(height: 30),
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: isWeb ? Colors.white : null,
+                                  boxShadow: isWeb
+                                      ? [
+                                          const BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 12,
+                                            offset: Offset(0, 4),
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                        ]
+                                      : [],
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ChoiceChip(
+                                            label: Text(_translate(
+                                                context, 'patient')),
+                                            selected: _isPatient,
+                                            selectedColor: primaryColor,
+                                            labelStyle: TextStyle(
+                                              color: _isPatient
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                            ),
+                                            onSelected: (_) => setState(() {
+                                              _isPatient = true;
+                                              _usernameController
+                                                  .clear(); // مسح اسم المستخدم عند اختيار مريض
+                                            }),
+                                          ),
                                         ),
-                                        const SizedBox(height: 20),
-                                        if (_isPatient) ...[
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: ChoiceChip(
+                                            label: Text(_translate(
+                                                context, 'staff')),
+                                            selected: !_isPatient,
+                                            selectedColor: primaryColor,
+                                            labelStyle: TextStyle(
+                                              color: !_isPatient
+                                                  ? Colors.white
+                                                  : Colors.black,
+                                            ),
+                                            onSelected: (_) => setState(() {
+                                              _isPatient = false;
+                                              _emailController
+                                                  .clear(); // مسح الإيميل عند اختيار موظف/طبيب
+                                            }),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 30),
+                                    Text(
+                                      _translate(context, 'login'),
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: primaryColor,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    if (_isPatient) ...[
+                                      TextFormField(
+                                        controller: _emailController,
+                                        keyboardType:
+                                            TextInputType.emailAddress,
+                                        decoration: InputDecoration(
+                                          labelText:
+                                              _translate(context, 'email'),
+                                          prefixIcon: Icon(
+                                              Icons.email_outlined,
+                                              color: accentColor),
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            borderSide: BorderSide(
+                                                color:
+                                                    Colors.grey.shade400),
+                                          ),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            borderSide: BorderSide(
+                                                color: primaryColor,
+                                                width: 2),
+                                          ),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null ||
+                                              value.isEmpty) {
+                                            return languageProvider
+                                                    .isEnglish
+                                                ? 'Please enter email'
+                                                : 'الرجاء إدخال البريد الإلكتروني';
+                                          }
+                                          if (!value.contains('@')) {
+                                            return languageProvider
+                                                    .isEnglish
+                                                ? 'Please enter a valid email'
+                                                : 'الرجاء إدخال بريد إلكتروني صحيح';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 20),
+                                    ],
+                                    if (!_isPatient)
+                                      Column(
+                                        children: [
                                           TextFormField(
-                                            controller: _emailController,
-                                            keyboardType:
-                                                TextInputType.emailAddress,
+                                            controller: _usernameController,
                                             decoration: InputDecoration(
-                                              labelText:
-                                                  _translate(context, 'email'),
+                                              labelText: _translate(
+                                                  context, 'username'),
                                               prefixIcon: Icon(
-                                                  Icons.email_outlined,
+                                                  Icons.person_outline,
                                                   color: accentColor),
                                               border: OutlineInputBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(8),
+                                                    BorderRadius.circular(
+                                                        8),
                                                 borderSide: BorderSide(
-                                                    color:
-                                                        Colors.grey.shade400),
+                                                    color: Colors
+                                                        .grey.shade400),
                                               ),
-                                              focusedBorder: OutlineInputBorder(
+                                              focusedBorder:
+                                                  OutlineInputBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(8),
+                                                    BorderRadius.circular(
+                                                        8),
                                                 borderSide: BorderSide(
                                                     color: primaryColor,
                                                     width: 2),
@@ -637,275 +733,225 @@ class _LoginPageState extends State<LoginPage> {
                                                   value.isEmpty) {
                                                 return languageProvider
                                                         .isEnglish
-                                                    ? 'Please enter email'
-                                                    : 'الرجاء إدخال البريد الإلكتروني';
+                                                    ? 'Please enter username'
+                                                    : 'الرجاء إدخال اسم المستخدم';
                                               }
-                                              if (!value.contains('@')) {
+                                              if (value.contains(' ')) {
                                                 return languageProvider
                                                         .isEnglish
-                                                    ? 'Please enter a valid email'
-                                                    : 'الرجاء إدخال بريد إلكتروني صحيح';
+                                                    ? 'Username cannot contain spaces'
+                                                    : 'اسم المستخدم لا يمكن أن يحتوي على مسافات';
                                               }
                                               return null;
                                             },
                                           ),
-                                          const SizedBox(height: 20),
+                                          const SizedBox(height: 5),
+                                          // Align(
+                                          //   alignment: Alignment.centerLeft,
+                                          //   child: TextButton(
+                                          //     onPressed: _handleForgotPassword,
+                                          //     child: Text(
+                                          //       _translate(context, 'forgot_password'),
+                                          //       style: TextStyle(color: accentColor),
+                                          //     ),
+                                          //   ),
+                                          // ),
                                         ],
-                                        if (!_isPatient)
-                                          Column(
-                                            children: [
-                                              TextFormField(
-                                                controller: _usernameController,
-                                                decoration: InputDecoration(
-                                                  labelText: _translate(
-                                                      context, 'username'),
-                                                  prefixIcon: Icon(
-                                                      Icons.person_outline,
-                                                      color: accentColor),
-                                                  border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
-                                                    borderSide: BorderSide(
-                                                        color: Colors
-                                                            .grey.shade400),
-                                                  ),
-                                                  focusedBorder:
-                                                      OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
-                                                    borderSide: BorderSide(
-                                                        color: primaryColor,
-                                                        width: 2),
-                                                  ),
-                                                ),
-                                                validator: (value) {
-                                                  if (value == null ||
-                                                      value.isEmpty) {
-                                                    return languageProvider
-                                                            .isEnglish
-                                                        ? 'Please enter username'
-                                                        : 'الرجاء إدخال اسم المستخدم';
-                                                  }
-                                                  if (value.contains(' ')) {
-                                                    return languageProvider
-                                                            .isEnglish
-                                                        ? 'Username cannot contain spaces'
-                                                        : 'اسم المستخدم لا يمكن أن يحتوي على مسافات';
-                                                  }
-                                                  return null;
-                                                },
-                                              ),
-                                              const SizedBox(height: 5),
-                                              // Align(
-                                              //   alignment: Alignment.centerLeft,
-                                              //   child: TextButton(
-                                              //     onPressed: _handleForgotPassword,
-                                              //     child: Text(
-                                              //       _translate(context, 'forgot_password'),
-                                              //       style: TextStyle(color: accentColor),
-                                              //     ),
-                                              //   ),
-                                              // ),
-                                            ],
+                                      ),
+                                    const SizedBox(height: 20),
+                                    TextFormField(
+                                      controller: _passwordController,
+                                      obscureText: _obscurePassword,
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            _translate(context, 'password'),
+                                        prefixIcon: Icon(Icons.lock_outline,
+                                            color: accentColor),
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscurePassword
+                                                ? Icons.visibility_off
+                                                : Icons.visibility,
+                                            color: accentColor,
                                           ),
-                                        const SizedBox(height: 20),
-                                        TextFormField(
-                                          controller: _passwordController,
-                                          obscureText: _obscurePassword,
-                                          decoration: InputDecoration(
-                                            labelText:
-                                                _translate(context, 'password'),
-                                            prefixIcon: Icon(Icons.lock_outline,
-                                                color: accentColor),
-                                            suffixIcon: IconButton(
-                                              icon: Icon(
-                                                _obscurePassword
-                                                    ? Icons.visibility_off
-                                                    : Icons.visibility,
-                                                color: accentColor,
-                                              ),
-                                              onPressed: () => setState(() =>
-                                                  _obscurePassword =
-                                                      !_obscurePassword),
-                                            ),
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              borderSide: BorderSide(
-                                                  color: Colors.grey.shade400),
-                                            ),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              borderSide: BorderSide(
-                                                  color: primaryColor,
-                                                  width: 2),
-                                            ),
-                                          ),
-                                          validator: (value) {
-                                            if (value == null ||
-                                                value.isEmpty) {
-                                              return languageProvider.isEnglish
-                                                  ? 'Please enter password'
-                                                  : 'الرجاء إدخال كلمة المرور';
-                                            }
-                                            if (value.length < 6) {
-                                              return languageProvider.isEnglish
-                                                  ? 'Password must be at least 6 characters'
-                                                  : 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                                            }
-                                            return null;
-                                          },
+                                          onPressed: () => setState(() =>
+                                              _obscurePassword =
+                                                  !_obscurePassword),
                                         ),
-                                        const SizedBox(height: 20),
-                                        Row(
-                                          children: [
-                                            Checkbox(
-                                              value: _rememberMe,
-                                              onChanged: (value) => setState(
-                                                  () => _rememberMe = value!),
-                                              activeColor: primaryColor,
-                                            ),
-                                            Flexible(
-                                              flex: 2,
-                                              child: Text(
-                                                _translate(
-                                                    context, 'remember_me'),
-                                                style: TextStyle(
-                                                    color: primaryColor,
-                                                    fontSize: 14),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            if (_isPatient) ...[
-                                              const SizedBox(
-                                                  width:
-                                                      16), // زيادة المسافة بين تذكرني ونسيت كلمة المرور
-                                              Flexible(
-                                                flex: 3,
-                                                child: Align(
-                                                  alignment:
-                                                      Alignment.centerLeft,
-                                                  child: TextButton(
-                                                    onPressed:
-                                                        _handleForgotPassword,
-                                                    style: TextButton.styleFrom(
-                                                        padding:
-                                                            EdgeInsets.zero),
-                                                    child: Text(
-                                                      _translate(context,
-                                                          'forgot_password'),
-                                                      style: TextStyle(
-                                                          color: accentColor,
-                                                          fontSize: 14),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade400),
                                         ),
-                                        const SizedBox(height: 20),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton(
-                                            onPressed: _isLoading
-                                                ? null
-                                                : () => _handleLogin(context),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: primaryColor,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 16),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            child: _isLoading
-                                                ? const CircularProgressIndicator(
-                                                    color: Colors.white)
-                                                : Text(
-                                                    _translate(context,
-                                                        'login_button'),
-                                                    style: const TextStyle(
-                                                      fontSize: 18,
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          borderSide: BorderSide(
+                                              color: primaryColor,
+                                              width: 2),
+                                        ),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null ||
+                                            value.isEmpty) {
+                                          return languageProvider.isEnglish
+                                              ? 'Please enter password'
+                                              : 'الرجاء إدخال كلمة المرور';
+                                        }
+                                        if (value.length < 6) {
+                                          return languageProvider.isEnglish
+                                              ? 'Password must be at least 6 characters'
+                                              : 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      children: [
+                                        Checkbox(
+                                          value: _rememberMe,
+                                          onChanged: (value) => setState(
+                                              () => _rememberMe = value!),
+                                          activeColor: primaryColor,
+                                        ),
+                                        Flexible(
+                                          flex: 2,
+                                          child: Text(
+                                            _translate(
+                                                context, 'remember_me'),
+                                            style: TextStyle(
+                                                color: primaryColor,
+                                                fontSize: 14),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         if (_isPatient) ...[
-                                          const SizedBox(height: 15),
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const SignUpPage()),
-                                              );
-                                            },
-                                            child: Text(
-                                              _translate(
-                                                  context, 'create_account'),
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                color: primaryColor,
-                                                fontWeight: FontWeight.bold,
+                                          const SizedBox(
+                                              width:
+                                                  16), // زيادة المسافة بين تذكرني ونسيت كلمة المرور
+                                          Flexible(
+                                            flex: 3,
+                                            child: Align(
+                                              alignment:
+                                                  Alignment.centerLeft,
+                                              child: TextButton(
+                                                onPressed:
+                                                    _handleForgotPassword,
+                                                style: TextButton.styleFrom(
+                                                    padding:
+                                                        EdgeInsets.zero),
+                                                child: Text(
+                                                  _translate(context,
+                                                      'forgot_password'),
+                                                  style: TextStyle(
+                                                      color: accentColor,
+                                                      fontSize: 14),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ],
                                       ],
                                     ),
-                                  ),
-                                  const SizedBox(height: 40),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      IconButton(
-                                        icon: const FaIcon(
-                                            FontAwesomeIcons.facebook),
-                                        onPressed: () => launchUrl(Uri.parse(
-                                            "https://www.facebook.com/aaup.edu")),
-                                        color: Colors.blue[800],
+                                    const SizedBox(height: 20),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: _isLoading
+                                            ? null
+                                            : () => _handleLogin(context),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: primaryColor,
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 16),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: _isLoading
+                                            ? const CircularProgressIndicator(
+                                                color: Colors.white)
+                                            : Text(
+                                                _translate(context,
+                                                    'login_button'),
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  color: Colors.white,
+                                                  fontWeight:
+                                                      FontWeight.bold,
+                                                ),
+                                              ),
                                       ),
-                                      const SizedBox(width: 10),
-                                      IconButton(
-                                        icon: const FaIcon(
-                                            FontAwesomeIcons.linkedin),
-                                        onPressed: () => launchUrl(Uri.parse(
-                                            "https://www.linkedin.com/school/arabamericanuniversity")),
-                                        color: Colors.blue[700],
-                                      ),
-                                      const SizedBox(width: 10),
-                                      IconButton(
-                                        icon: const FaIcon(
-                                            FontAwesomeIcons.instagram),
-                                        onPressed: () => launchUrl(Uri.parse(
-                                            "https://www.instagram.com/Aaup_edu")),
-                                        color: Colors.pinkAccent,
+                                    ),
+                                    if (_isPatient) ...[
+                                      const SizedBox(height: 15),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const SignUpPage()),
+                                          );
+                                        },
+                                        child: Text(
+                                          _translate(
+                                              context, 'create_account'),
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: primaryColor,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
                                       ),
                                     ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 40),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    icon: const FaIcon(
+                                        FontAwesomeIcons.facebook),
+                                    onPressed: () => launchUrl(Uri.parse(
+                                        "https://www.facebook.com/aaup.edu")),
+                                    color: Colors.blue[800],
+                                  ),
+                                  const SizedBox(width: 10),
+                                  IconButton(
+                                    icon: const FaIcon(
+                                        FontAwesomeIcons.linkedin),
+                                    onPressed: () => launchUrl(Uri.parse(
+                                        "https://www.linkedin.com/school/arabamericanuniversity")),
+                                    color: Colors.blue[700],
+                                  ),
+                                  const SizedBox(width: 10),
+                                  IconButton(
+                                    icon: const FaIcon(
+                                        FontAwesomeIcons.instagram),
+                                    onPressed: () => launchUrl(Uri.parse(
+                                        "https://www.instagram.com/Aaup_edu")),
+                                    color: Colors.pinkAccent,
                                   ),
                                 ],
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
