@@ -602,13 +602,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                         mainAxisSpacing: 15,
                         childAspectRatio: 1.1,
                         children: [
-                          _buildFeatureBox(
-                            context,
-                            Icons.medical_services,
-                            _translate(context, 'medical_records'),
-                            primaryColor,
-                            () => _navigateTo(context, '/medical_records'),
-                          ),
+                          // تم حذف السجلات الطبية بناءً على طلبك
                           _buildFeatureBox(
                             context,
                             Icons.calendar_today,
@@ -774,13 +768,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   mainAxisSpacing: 15,
                   childAspectRatio: 1.1,
                   children: [
-                    _buildFeatureBox(
-                      context,
-                      Icons.medical_services,
-                      _translate(context, 'medical_records'),
-                      primaryColor,
-                      () => _navigateTo(context, '/medical_records'),
-                    ),
                     _buildFeatureBox(
                       context,
                       Icons.calendar_today,

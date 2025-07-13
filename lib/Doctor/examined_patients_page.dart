@@ -4,9 +4,27 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:flutter/services.dart';
 import '../../providers/language_provider.dart';
 import '../Doctor/doctor_sidebar.dart';
 import '../Student/student_sidebar.dart';
+
+Map<String, dynamic> safeConvertMap(dynamic data) {
+  if (data == null) return {};
+  if (data is Map<String, dynamic>) return data;
+  if (data is Map) {
+    try {
+      return Map<String, dynamic>.from(data);
+    } catch (e) {
+      debugPrint('Error converting map: $e');
+      return {};
+    }
+  }
+  return {};
+}
 
 class ExaminedPatientsPage extends StatefulWidget {
   final String? studentName;
@@ -18,6 +36,32 @@ class ExaminedPatientsPage extends StatefulWidget {
 }
 
 class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
+  // جدول عرض نتائج التحليل (detections)
+  Widget _buildDetectionsTable(List detections) {
+    if (detections.isEmpty) {
+      return const Text('لا يوجد نتائج تحليل متوفرة', style: TextStyle(color: textSecondary));
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('السن', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(label: Text('التشخيص', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(label: Text('الربع', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(label: Text('الثقة', style: TextStyle(fontWeight: FontWeight.bold))),
+        ],
+        rows: detections.map<DataRow>((d) {
+          final Map<String, dynamic> det = d is Map<String, dynamic> ? d : Map<String, dynamic>.from(d);
+          return DataRow(cells: [
+            DataCell(Text(det['tooth']?.toString() ?? '-')),
+            DataCell(Text(det['diagnosis']?.toString() ?? '-')),
+            DataCell(Text(det['quadrant']?.toString() ?? '-')),
+            DataCell(Text(det['confidence'] != null ? (det['confidence'] as double).toStringAsFixed(2) : '-')),
+          ]);
+        }).toList(),
+      ),
+    );
+  }
   // تعريف الألوان
   static const Color primaryColor = Color(0xFF2A7A94);
   static const Color backgroundColor = Colors.white;
@@ -101,7 +145,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     'root_canal': {'ar': 'معالجة لب', 'en': 'Root Canal'},
     'extraction_needed': {'ar': 'يحتاج خلع', 'en': 'Extraction Needed'},
     'crown': {'ar': 'تاج', 'en': 'Crown'},
-    'impacted': {'ar': 'منطبر', 'en': 'Impacted'},
+    'impacted': {'ar': 'منطمر', 'en': 'Impacted'},
     'missing': {'ar': 'مفقود', 'en': 'Missing'},
     'delete_old_exams': {
       'ar': 'حذف الفحوصات القديمة',
@@ -146,24 +190,14 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     super.dispose();
   }
 
-  String _translate(BuildContext context, String key) {
-    final languageProvider =
-        Provider.of<LanguageProvider>(context, listen: false);
-    return _translations[key]?[languageProvider.isEnglish ? 'en' : 'ar'] ?? key;
+  // Move _getFullName and _translate above their first usage and ensure they are instance methods
+  String _getFullName(Map<String, dynamic> patient) {
+    return '${patient['firstName'] ?? ''} ${patient['fatherName'] ?? ''} ${patient['grandfatherName'] ?? ''} ${patient['familyName'] ?? ''}'.trim();
   }
 
-  Map<String, dynamic> _safeConvertMap(dynamic data) {
-    if (data == null) return {};
-    if (data is Map<String, dynamic>) return data;
-    if (data is Map) {
-      try {
-        return Map<String, dynamic>.from(data);
-      } catch (e) {
-        debugPrint('Error converting map: $e');
-        return {};
-      }
-    }
-    return {};
+  String _translate(BuildContext context, String key) {
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    return _translations[key]?[languageProvider.isEnglish ? 'en' : 'ar'] ?? key;
   }
 
   Future<void> _deleteOldExaminations() async {
@@ -181,12 +215,12 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
       }
 
       final Map<String, dynamic> examinations =
-          _safeConvertMap(examinationsSnapshot.value);
+          safeConvertMap(examinationsSnapshot.value);
       final Map<String, Map<String, dynamic>> latestExaminations = {};
 
       // تحديد أحدث فحص لكل مريض
       examinations.forEach((key, value) {
-        final examData = _safeConvertMap(value);
+        final examData = safeConvertMap(value);
         final String? patientId = examData['patientId']?.toString();
 
         if (patientId == null || patientId.isEmpty) return;
@@ -204,7 +238,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
       // حذف الفحوصات القديمة
       int deletedCount = 0;
       await Future.forEach(examinations.entries, (entry) async {
-        final examData = _safeConvertMap(entry.value);
+        final examData = safeConvertMap(entry.value);
         final String? patientId = examData['patientId']?.toString();
 
         if (patientId == null || patientId.isEmpty) return;
@@ -279,6 +313,19 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     );
   }
 
+  Future<Set<String>> _getAllowedPatientsForStudent(String studentId) async {
+    final ref = FirebaseDatabase.instance.ref('student_patients/$studentId');
+    final snapshot = await ref.get();
+    final data = snapshot.value as Map<dynamic, dynamic>?;
+    if (data == null) {
+      debugPrint('No allowed patients for student: $studentId');
+      return {};
+    }
+    final allowed = data.keys.map((e) => e.toString()).toSet();
+    debugPrint('Allowed patients for student $studentId: ${allowed.length} => $allowed');
+    return allowed;
+  }
+
   Future<void> _loadAllExaminations() async {
     try {
       setState(() {
@@ -289,13 +336,13 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
 
       // 1. جلب جميع الفحوصات من examinations (flat + nested)
       final DataSnapshot examinationsSnapshot = await _examinationsRef.get();
-      final Map<String, dynamic> examinations = _safeConvertMap(examinationsSnapshot.value);
+      final Map<String, dynamic> examinations = safeConvertMap(examinationsSnapshot.value);
       // 2. جلب جميع الفحوصات من doctorExaminations
       final DataSnapshot doctorExamsSnapshot = await FirebaseDatabase.instance.ref('examinations').get();
-      final Map<String, dynamic> doctorExams = _safeConvertMap(doctorExamsSnapshot.value);
+      final Map<String, dynamic> doctorExams = safeConvertMap(doctorExamsSnapshot.value);
       // 3. جلب جميع الفحوصات من examinations/examinations (legacy)
       final DataSnapshot legacyExamsSnapshot = await _examinationsRef.child('examinations').get();
-      final Map<String, dynamic> legacyExams = _safeConvertMap(legacyExamsSnapshot.value);
+      final Map<String, dynamic> legacyExams = safeConvertMap(legacyExamsSnapshot.value);
 
       // نجمع كل الفحوصات في قائمة واحدة (بدون أي deduplication)
       final List<Map<String, dynamic>> allExaminations = [];
@@ -305,10 +352,10 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         final String parentKey = entry.key;
         final dynamic patientNode = entry.value;
         if (patientNode is Map && patientNode.containsKey('examinations')) {
-          final Map<String, dynamic> patientExams = _safeConvertMap(patientNode['examinations']);
+          final Map<String, dynamic> patientExams = safeConvertMap(patientNode['examinations']);
           for (final examEntry in patientExams.entries) {
             final String examKey = examEntry.key;
-            final examData = _safeConvertMap(examEntry.value);
+            final examData = safeConvertMap(examEntry.value);
             // استخدم patientId من الفحص نفسه إذا وجد، وإلا استخدم parentKey
             final String? patientId = examData['patientId']?.toString() ?? parentKey;
             DataSnapshot? patientSnapshot;
@@ -316,7 +363,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             try {
               patientSnapshot = await _patientsRef.child(patientId ?? '').get();
               if (patientSnapshot.exists) {
-                patientData = _safeConvertMap(patientSnapshot.value);
+                patientData = safeConvertMap(patientSnapshot.value);
                 patientData['id'] = patientId;
               } else {
                 // debugPrint('Nested: patientId $patientId not found in users, will show as unknown');
@@ -331,7 +378,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             if (doctorId != null && doctorId.isNotEmpty) {
               final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
               if (doctorSnapshot.exists) {
-                doctorData = _safeConvertMap(doctorSnapshot.value);
+                doctorData = safeConvertMap(doctorSnapshot.value);
                 doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
               }
             }
@@ -354,7 +401,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           // debugPrint('Skip key $key: contains nested examinations');
           return;
         }
-        final examData = _safeConvertMap(value);
+        final examData = safeConvertMap(value);
         final String? patientId = examData['patientId']?.toString();
         if (patientId == null || patientId.isEmpty) {
           // debugPrint('Skip key $key: missing patientId');
@@ -366,7 +413,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           // debugPrint('Skip key $key: patientId $patientId not found in users');
           return;
         }
-        final Map<String, dynamic> patientData = _safeConvertMap(patientSnapshot.value);
+        final Map<String, dynamic> patientData = safeConvertMap(patientSnapshot.value);
         patientData['id'] = patientId;
         final String? doctorId = examData['doctorId']?.toString();
         Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
@@ -374,7 +421,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
           if (!mounted) return;
           if (doctorSnapshot.exists) {
-            doctorData = _safeConvertMap(doctorSnapshot.value);
+            doctorData = safeConvertMap(doctorSnapshot.value);
             doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
           }
         }
@@ -390,13 +437,13 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
       // Pass 3: doctorExaminations/{examId}
       await Future.forEach(doctorExams.entries, (entry) async {
         final String examKey = entry.key;
-        final examData = _safeConvertMap(entry.value);
+        final examData = safeConvertMap(entry.value);
         final String? patientId = examData['patientId']?.toString();
         if (patientId == null || patientId.isEmpty) return;
         final DataSnapshot patientSnapshot = await _patientsRef.child(patientId).get();
         if (!mounted) return;
         if (!patientSnapshot.exists) return;
-        final Map<String, dynamic> patientData = _safeConvertMap(patientSnapshot.value);
+        final Map<String, dynamic> patientData = safeConvertMap(patientSnapshot.value);
         patientData['id'] = patientId;
         final String? doctorId = examData['doctorId']?.toString();
         Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
@@ -404,7 +451,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
           if (!mounted) return;
           if (doctorSnapshot.exists) {
-            doctorData = _safeConvertMap(doctorSnapshot.value);
+            doctorData = safeConvertMap(doctorSnapshot.value);
             doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
           }
         }
@@ -420,13 +467,13 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
       // Pass 4: legacy examinations (examinations/examinations/{examId})
       await Future.forEach(legacyExams.entries, (entry) async {
         final String examKey = entry.key;
-        final examData = _safeConvertMap(entry.value);
+        final examData = safeConvertMap(entry.value);
         final String? patientId = examData['patientId']?.toString();
         if (patientId == null || patientId.isEmpty) return;
         final DataSnapshot patientSnapshot = await _patientsRef.child(patientId).get();
         if (!mounted) return;
         if (!patientSnapshot.exists) return;
-        final Map<String, dynamic> patientData = _safeConvertMap(patientSnapshot.value);
+        final Map<String, dynamic> patientData = safeConvertMap(patientSnapshot.value);
         patientData['id'] = patientId;
         final String? doctorId = examData['doctorId']?.toString();
         Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
@@ -434,7 +481,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
           if (!mounted) return;
           if (doctorSnapshot.exists) {
-            doctorData = _safeConvertMap(doctorSnapshot.value);
+            doctorData = safeConvertMap(doctorSnapshot.value);
             doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
           }
         }
@@ -465,17 +512,24 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           latestExamsByPatient[patientId] = exam;
         }
       }
-      final List<Map<String, dynamic>> deduplicatedExaminations = latestExamsByPatient.values.toList();
+      List<Map<String, dynamic>> deduplicatedExaminations = latestExamsByPatient.values.toList();
       deduplicatedExaminations.sort((a, b) {
         final aTime = a['examination']['timestamp'] ?? 0;
         final bTime = b['examination']['timestamp'] ?? 0;
         return bTime.compareTo(aTime);
       });
 
-      // debugPrint('Total examinations loaded (deduplicated): \\${deduplicatedExaminations.length}');
-      // for (var ex in deduplicatedExaminations) {
-      //   debugPrint('ExamId: \\${ex['examinationId']} - PatientId: \\${ex['patient']['id']} - Source: \\${ex['source']}');
-      // }
+      // فلترة حسب صلاحيات الطالب
+      if (_userRole == 'dental_student') {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final allowedPatients = await _getAllowedPatientsForStudent(user.uid);
+          deduplicatedExaminations = deduplicatedExaminations.where((exam) {
+            final patientId = exam['patient']?['id']?.toString();
+            return patientId != null && allowedPatients.contains(patientId);
+          }).toList();
+        }
+      }
 
       setState(() {
         _examinedPatients = deduplicatedExaminations;
@@ -503,16 +557,11 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     });
   }
 
-  String _getFullName(Map<String, dynamic> patient) {
-    return '${patient['firstName'] ?? ''} ${patient['fatherName'] ?? ''} ${patient['grandfatherName'] ?? ''} ${patient['familyName'] ?? ''}'
-        .trim();
-  }
-
   Widget _buildPatientCard(
       Map<String, dynamic> patientExam, BuildContext context) {
-    final patient = _safeConvertMap(patientExam['patient']);
-    final exam = _safeConvertMap(patientExam['examination']);
-    final doctor = _safeConvertMap(patientExam['doctor']);
+    final patient = safeConvertMap(patientExam['patient']);
+    final exam = safeConvertMap(patientExam['examination']);
+    final doctor = safeConvertMap(patientExam['doctor']);
 
     final fullName = _getFullName(patient);
     final phone = patient['phone'] ?? _translate(context, 'no_number');
@@ -522,51 +571,54 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             .format(DateTime.fromMillisecondsSinceEpoch(exam['timestamp']))
         : _translate(context, 'unknown');
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      color: cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: borderColor, width: 1),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showPatientDetails(context, patientExam),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      fullName.isNotEmpty
-                          ? fullName
-                          : _translate(context, 'unknown'),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: textPrimary,
+    return Container(
+      width: double.infinity,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+        elevation: 2,
+        color: cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: borderColor, width: 1),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _showPatientDetails(context, patientExam),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        fullName.isNotEmpty
+                            ? fullName
+                            : _translate(context, 'unknown'),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  const Icon(Icons.arrow_forward_ios,
-                      size: 16, color: textSecondary),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildInfoRow(
-                  Icons.person, '${_translate(context, 'age')}: $age'),
-              _buildInfoRow(
-                  Icons.phone, '${_translate(context, 'phone')}: $phone'),
-              _buildInfoRow(Icons.calendar_today,
-                  '${_translate(context, 'examination_date')}: $examDate'),
-              _buildInfoRow(Icons.medical_services,
-                  '${_translate(context, 'examining_doctor')}: ${doctor['name']}'),
-            ],
+                    const Icon(Icons.arrow_forward_ios,
+                        size: 16, color: textSecondary),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                    Icons.person, '${_translate(context, 'age')}: $age'),
+                _buildInfoRow(
+                    Icons.phone, '${_translate(context, 'phone')}: $phone'),
+                _buildInfoRow(Icons.calendar_today,
+                    '${_translate(context, 'examination_date')}: $examDate'),
+                _buildInfoRow(Icons.medical_services,
+                    '${_translate(context, 'examining_doctor')}: ${doctor['name']}'),
+              ],
+            ),
           ),
         ),
       ),
@@ -593,11 +645,11 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
 
   void _showPatientDetails(
       BuildContext context, Map<String, dynamic> patientExam) {
-    final patient = _safeConvertMap(patientExam['patient']);
-    final exam = _safeConvertMap(patientExam['examination']);
-    final doctor = _safeConvertMap(patientExam['doctor']);
-    final examData = _safeConvertMap(exam['examData'] ?? exam['examData'] ?? {});
-    final screeningData = _safeConvertMap(exam['screening'] ?? exam['screening'] ?? {});
+    final patient = safeConvertMap(patientExam['patient']);
+    final exam = safeConvertMap(patientExam['examination']);
+    final doctor = safeConvertMap(patientExam['doctor']);
+    final examData = safeConvertMap(exam['examData'] ?? exam['examData'] ?? {});
+    final screeningData = safeConvertMap(exam['screening'] ?? exam['screening'] ?? {});
 
     final fullName = _getFullName(patient);
     final examDate = (exam['timestamp'] != null && exam['timestamp'] is int)
@@ -622,7 +674,15 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             iconTheme: const IconThemeData(color: Colors.white),
             elevation: 2,
             centerTitle: true,
-            actions: [],
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+                tooltip: 'تصدير PDF',
+                onPressed: () async {
+                  await _exportPatientReportAsPdf(context, patientExam);
+                },
+              ),
+            ],
           ),
           backgroundColor: backgroundColor,
           drawer: (_userRole == 'dental_student'
@@ -713,14 +773,14 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                     _buildDetailSection(
                       title: _translate(context, 'periodontal_chart'),
                       children: _buildPeriodontalDetails(
-                          _safeConvertMap(examData['periodontalChart'])),
+                          safeConvertMap(examData['periodontalChart'])),
                     ),
                   if (examData['dentalChart'] != null &&
                       examData['dentalChart'] is Map)
                     _buildDetailSection(
                       title: _translate(context, 'dental_chart'),
                       children: _buildDentalChartDetails(
-                          _safeConvertMap(examData['dentalChart']), context),
+                          safeConvertMap(examData['dentalChart']), context),
                     ),
                 ],
                 // إضافة كارد صورة الأشعة بعد كل بيانات الفحص
@@ -733,293 +793,191 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     );
   }
 
-  List<Widget> _buildScreeningDetails(Map<String, dynamic> screening) {
-    final List<Widget> widgets = [];
-    void add(String label, dynamic value) {
-      if (value != null && value.toString().isNotEmpty) {
-        widgets.add(_buildDetailItem(label, value.toString()));
+  // دالة تتحقق إذا كان النص عربي
+  bool _isArabicText(String text) {
+    final arabicRegExp = RegExp(r'[\u0600-\u06FF]');
+    return arabicRegExp.hasMatch(text);
+  }
+
+  // دالة تولد عنصر نصي مع اتجاه مناسب (تدعم العربي داخل LTR)
+  pw.Widget _smartText(String text, pw.TextStyle style) {
+    if (_isArabicText(text)) {
+      return pw.Directionality(
+        textDirection: pw.TextDirection.rtl,
+        child: pw.Text(text, style: style),
+      );
+    } else {
+      return pw.Text(text, style: style);
+    }
+  }
+
+  // دالة تولد Bullet مع اتجاه مناسب (تدعم العربي داخل LTR)
+  pw.Widget _smartBullet(String text, pw.TextStyle style) {
+    if (_isArabicText(text)) {
+      return pw.Directionality(
+        textDirection: pw.TextDirection.rtl,
+        child: pw.Bullet(text: text, style: style),
+      );
+    } else {
+      return pw.Bullet(text: text, style: style);
+    }
+  }
+
+  Future<void> _exportPatientReportAsPdf(BuildContext context, Map<String, dynamic> patientExam) async {
+    final patient = safeConvertMap(patientExam['patient']);
+    final exam = safeConvertMap(patientExam['examination']);
+    final doctor = safeConvertMap(patientExam['doctor']);
+    final examData = safeConvertMap(exam['examData'] ?? exam['examData'] ?? {});
+    final screeningData = safeConvertMap(exam['screening'] ?? exam['screening'] ?? {});
+    final fullName = _getFullName(patient);
+    final doctorName = (doctor['name'] ?? '').toString();
+    final examDate = (exam['timestamp'] != null && exam['timestamp'] is int)
+        ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.fromMillisecondsSinceEpoch(exam['timestamp'] as int))
+        : _translate(context, 'unknown');
+    final pdf = pw.Document();
+    final dentalChart = safeConvertMap(examData['dentalChart']);
+    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+    final isArabic = !languageProvider.isEnglish;
+
+    // تحميل خط عربي من المسار الصحيح
+    final fontData = await rootBundle.load('assets/Cairo-Regular.ttf');
+    final ttf = pw.Font.ttf(fontData);
+
+    // تحميل صورة اللوجو من الأصول
+    final logoData = await rootBundle.load('/Users/macbook/Downloads/Senior-main/lib/assets/aauplogo.png');
+    final logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+
+    pw.TextStyle style([double size = 14, bool bold = false]) => pw.TextStyle(
+      font: ttf,
+      fontSize: size,
+      fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+    );
+
+    // استخراج corrected_class من بيانات الأشعة
+    List<String> xrayCorrectedClasses = [];
+    if (exam['xrayImageData'] != null && exam['xrayImageData'] is Map) {
+      final xrayData = Map<String, dynamic>.from(exam['xrayImageData']);
+      final analysisResult = xrayData['analysisResultJson'];
+      if (analysisResult != null && analysisResult is Map && analysisResult['detections'] is List) {
+        xrayCorrectedClasses = (analysisResult['detections'] as List)
+            .where((d) => d is Map && d['corrected_class'] != null)
+            .map<String>((d) => d['corrected_class'].toString())
+            .toList();
       }
     }
 
-    add('Chief Complaint', screening['chiefComplaint']);
-    add('Medications', screening['medications']);
-    add('Positive Answers Explanation',
-        screening['positiveAnswersExplanation']);
-    add('Preventive Advice', screening['preventiveAdvice']);
-    add('Total Score', screening['totalScore']);
-    // يمكن إضافة المزيد حسب الحاجة
-    return widgets;
-  }
-
-  List<Widget> _buildPeriodontalDetails(Map<String, dynamic> chart) {
-    return chart.entries.map((entry) {
-      return _buildDetailItem(entry.key, entry.value.toString());
-    }).toList();
-  }
-
-  List<Widget> _buildDentalChartDetails(
-      Map<String, dynamic> chart, BuildContext context) {
-    final List<Widget> widgets = [];
-
-    if (chart['selectedTeeth'] != null && chart['selectedTeeth'] is List) {
-      widgets.add(_buildDetailItem(
-        'Selected Teeth',
-        (chart['selectedTeeth'] as List).join(', '),
-      ));
-    }
-
-    if (chart['teethConditions'] != null && chart['teethConditions'] is Map) {
-      final conditions = _safeConvertMap(chart['teethConditions']);
-      conditions.forEach((tooth, color) {
-        if (color is String) {
-          final colorMeaning = _getColorMeaning(color);
-          widgets.add(
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
+    pdf.addPage(
+      pw.MultiPage(
+        textDirection: isArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        header: (pw.Context ctx) => pw.Center(
+          child: pw.Image(logoImage, width: 160, height: 160, fit: pw.BoxFit.contain),
+        ),
+        footer: (pw.Context ctx) => pw.Container(
+          alignment: pw.Alignment.centerRight,
+          margin: const pw.EdgeInsets.only(top: 10),
+          child: pw.Text(
+            '${isArabic ? 'صفحة' : 'Page'} ${ctx.pageNumber} / ${ctx.pagesCount}',
+            style: style(12),
+          ),
+        ),
+        build: (pw.Context ctx) => [
+          pw.Center(
+            child: _smartText(
+              isArabic ? 'تقرير فحص المريض' : 'Patient Examination Report',
+              style(28, true),
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          if (xrayCorrectedClasses.isNotEmpty)
+            pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: _parseColor(color),
-                      border: Border.all(color: borderColor),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    margin: const EdgeInsets.only(right: 8),
-                  ),
-                  Text(
-                      '${_translate(context, 'tooth')} $tooth - ${_translate(context, colorMeaning.toLowerCase())}'),
+                  _smartText(isArabic ? 'الأسنان المكتشفة من صورة الأشعة:' : 'Detected Teeth from X-ray:', style(16, true)),
+                  pw.SizedBox(height: 4),
+                  for (final c in xrayCorrectedClasses)
+                    _smartText(c, style()),
                 ],
               ),
             ),
-          );
-        }
-      });
-    }
-
-    return widgets;
-  }
-
-  String _getColorMeaning(String hexColor) {
-    final colorMap = {
-      'ff000000': 'caries',
-      'ffffa500': 'filled',
-      'ff8b4513': 'root_canal',
-      'fff44336': 'extraction_needed',
-      'ff607d8b': 'crown',
-      'ffffd700': 'impacted',
-      'ffffff00': 'missing',
-    };
-    return colorMap[hexColor.toLowerCase()] ?? 'unknown';
-  }
-
-  Color _parseColor(String color) {
-    try {
-      String hexColor = color;
-      if (hexColor.startsWith('ff')) {
-        hexColor = '0x$hexColor';
-      }
-      return Color(int.tryParse(hexColor) ?? 0xFF000000);
-    } catch (e) {
-      return Colors.grey;
-    }
-  }
-
-  Widget _buildDetailSection(
-      {required String title, required List<Widget> children}) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      color: cardColor,
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: borderColor, width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...children,
+          _smartText(isArabic ? 'معلومات المريض:' : 'Patient Information:', style(20, true)),
+          _smartText('${isArabic ? 'الاسم' : 'Name'}: $fullName', style()),
+          _smartText('${isArabic ? 'العمر' : 'Age'}: ${_calculateAge(context, patient['birthDate'])}', style()),
+          _smartText('${isArabic ? 'الجنس' : 'Gender'}: ${(patient['gender'] ?? _translate(context, 'unknown')).toString()}', style()),
+          _smartText('${isArabic ? 'الهاتف' : 'Phone'}: ${(patient['phone'] ?? _translate(context, 'no_number')).toString()}', style()),
+          pw.SizedBox(height: 8),
+          _smartText(isArabic ? 'معلومات الفحوصات:' : 'Examination Information:', style(20, true)),
+          _smartText('${isArabic ? 'الطبيب المختص' : 'Doctor'}: $doctorName', style()),
+          _smartText('${isArabic ? 'تاريخ الفحص' : 'Examination Date'}: $examDate', style()),
+          pw.SizedBox(height: 8),
+          if (screeningData.isNotEmpty) ...[
+            _smartText(isArabic ? 'نموذج التقييم الأولي:' : 'Screening Form:', style(18, true)),
+            if (screeningData['chiefComplaint'] != null)
+              _smartText('${isArabic ? 'الشكوى الرئيسية' : 'Chief Complaint'}: ${screeningData['chiefComplaint']}', style()),
+            if (screeningData['medications'] != null)
+              _smartText('${isArabic ? 'الأدوية' : 'Medications'}: ${screeningData['medications']}', style()),
+            if (screeningData['positiveAnswersExplanation'] != null)
+              _smartText('${isArabic ? 'توضيح الإجابات الإيجابية' : 'Positive Answers Explanation'}: ${screeningData['positiveAnswersExplanation']}', style()),
+            if (screeningData['preventiveAdvice'] != null)
+              _smartText('${isArabic ? 'النصائح الوقائية' : 'Preventive Advice'}: ${screeningData['preventiveAdvice']}', style()),
+            if (screeningData['categories'] != null && screeningData['categories'] is List) ...[
+              _smartText(isArabic ? 'تقييم صحة الفم:' : 'Oral Health Assessment:', style(16, true)),
+              for (final category in screeningData['categories'])
+                if (category is Map && category.containsKey('name') && category.containsKey('score'))
+                  _smartText('${category['name']}: ${category['score']}', style()),
+            ],
+            if (screeningData['totalScore'] != null)
+              _smartText('${isArabic ? 'المجموع الكلي' : 'Total Score'}: ${screeningData['totalScore']}', style(16, true)),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: textPrimary,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              style: const TextStyle(color: textPrimary),
-            ),
-          ),
+          if (examData.isNotEmpty) ...[
+            _smartText(isArabic ? 'تفاصيل الفحص السريري:' : 'Clinical Examination Details:', style(18, true)),
+            _smartText('TMJ: ${(examData['tmj'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'العقد اللمفاوية' : 'Lymph Node'}: ${(examData['lymphNode'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'ملف المريض' : 'Patient Profile'}: ${(examData['patientProfile'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'انطباق الشفاه' : 'Lip Competency'}: ${(examData['lipCompetency'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'تصنيف القواطع' : 'Incisal Classification'}: ${(examData['incisalClassification'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'تراكب أمامي' : 'Overjet'}: ${(examData['overjet'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'تراكب عمودي' : 'Overbite'}: ${(examData['overbite'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'الحنك الصلب' : 'Hard Palate'}: ${(examData['hardPalate'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'الغشاء المخاطي الشدقي' : 'Buccal Mucosa'}: ${(examData['buccalMucosa'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'أرضية الفم' : 'Floor of Mouth'}: ${(examData['floorOfMouth'] ?? 'N/A').toString()}', style()),
+            _smartText('${isArabic ? 'الحافة عديمة الأسنان' : 'Edentulous Ridge'}: ${(examData['edentulousRidge'] ?? 'N/A').toString()}', style()),
+            if (examData['periodontalChart'] != null && examData['periodontalChart'] is Map) ...[
+              _smartText(isArabic ? 'جدول اللثة:' : 'Periodontal Chart:', style(16, true)),
+              for (final entry in safeConvertMap(examData['periodontalChart']).entries)
+                _smartText('${entry.key}: ${entry.value}', style()),
+            ],
+            if (examData['dentalChart'] != null && examData['dentalChart'] is Map) ...[
+              _smartText(isArabic ? 'جدول الأسنان:' : 'Dental Chart:', style(16, true)),
+              if (dentalChart['selectedTeeth'] != null && dentalChart['selectedTeeth'] is List)
+                _smartText('${isArabic ? 'الأسنان المختارة' : 'Selected Teeth'}: ${(dentalChart['selectedTeeth'] as List).join(", ")}', style()),
+              if (dentalChart['teethConditions'] != null && dentalChart['teethConditions'] is Map) ...[
+                for (final entry in safeConvertMap(dentalChart['teethConditions']).entries)
+                  _smartText('${isArabic ? 'سن' : 'Tooth'} ${entry.key} - ${entry.value}', style()),
+              ],
+            ],
+          ],
         ],
       ),
     );
-  }
-
-  String _calculateAge(BuildContext context, dynamic birthDateValue) {
-    if (birthDateValue == null) return _translate(context, 'age_unknown');
-
-    final int timestamp;
-    if (birthDateValue is String) {
-      timestamp = int.tryParse(birthDateValue) ?? 0;
-    } else if (birthDateValue is int) {
-      timestamp = birthDateValue;
-    } else {
-      timestamp = 0;
-    }
-
-    if (timestamp <= 0) return _translate(context, 'age_unknown');
-
-    final birthDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final now = DateTime.now();
-
-    if (birthDate.isAfter(now)) return _translate(context, 'age_unknown');
-
-    final age = now.difference(birthDate);
-    final years = age.inDays ~/ 365;
-    final months = (age.inDays % 365) ~/ 30;
-    final days = (age.inDays % 365) % 30;
-
-    if (years > 0) {
-      return '$years ${_translate(context, 'years')}';
-    } else if (months > 0) {
-      return '$months ${_translate(context, 'months')}';
-    } else {
-      return '$days ${_translate(context, 'days')}';
-    }
-  }
-
-  Widget _buildSearchField() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: _translate(context, 'search_hint'),
-          prefixIcon: const Icon(Icons.search, color: textSecondary),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: borderColor),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: primaryColor, width: 2),
-          ),
-          filled: true,
-          fillColor: backgroundColor,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        ),
-      ),
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+      name: 'Patient_Report_${fullName.replaceAll(' ', '_')}.pdf',
     );
-  }
-
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 50, color: errorColor),
-          const SizedBox(height: 20),
-          Text(
-            _translate(context, 'error_loading'),
-            style: const TextStyle(fontSize: 18, color: textPrimary),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _loadAllExaminations,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Text(
-              _translate(context, 'retry'),
-              style: const TextStyle(color: cardColor),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _loadDoctorSidebarInfo() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final snapshot = await _patientsRef.child(user.uid).get();
-    if (snapshot.exists) {
-      final data = snapshot.value as Map<dynamic, dynamic>;
-      final role = data['role']?.toString() ?? data['type']?.toString();
-      final firstName = data['firstName']?.toString().trim() ?? '';
-      final fatherName = data['fatherName']?.toString().trim() ?? '';
-      final grandfatherName = data['grandfatherName']?.toString().trim() ?? '';
-      final familyName = data['familyName']?.toString().trim() ?? '';
-      final fullName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
-      if (role == 'dental_student') {
-        final imageUrl = data['imageUrl']?.toString() ?? '';
-        setState(() {
-          _doctorName = fullName.isNotEmpty ? fullName : 'الطالب';
-          _doctorImageUrl = imageUrl.isNotEmpty ? imageUrl : null;
-          _userRole = role;
-        });
-      } else {
-        final imageData = data['image']?.toString() ?? '';
-        setState(() {
-          _doctorName = fullName.isNotEmpty ? fullName : null;
-          _doctorImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : null;
-          _userRole = role;
-        });
-      }
-    } else {
-      setState(() {
-        _doctorName = null;
-        _doctorImageUrl = null;
-        _userRole = null;
-      });
-    }
   }
 
   // كاش مؤقت لصور الأشعة
-  Map<String, String?> _xrayImageCache = {};
+  final Map<String, String?> _xrayImageCache = {};
 
-  // جلب صورة الأشعة من xray_images حسب patientId أو idNumber
-  Future<String?> _getXrayImageForPatient(String? patientId, String? idNumber) async {
+  // جلب صورة الأشعة وبيانات التحليل من xray_images حسب patientId أو idNumber
+  Future<Map<String, dynamic>?> _getXrayImageAndAnalysisForPatient(String? patientId, String? idNumber) async {
     if (patientId != null && _xrayImageCache.containsKey(patientId)) {
-      return _xrayImageCache[patientId];
+      return _xrayImageCache[patientId] != null ? {'xrayImage': _xrayImageCache[patientId]} : null;
     }
     if (idNumber != null && _xrayImageCache.containsKey(idNumber)) {
-      return _xrayImageCache[idNumber];
+      return _xrayImageCache[idNumber] != null ? {'xrayImage': _xrayImageCache[idNumber]} : null;
     }
     final ref = FirebaseDatabase.instance.ref('xray_images');
     final snapshot = await ref.get();
@@ -1032,10 +990,11 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         final map = Map<String, dynamic>.from(value);
         if ((patientId != null && map['patientId']?.toString() == patientId) ||
             (idNumber != null && map['idNumber']?.toString() == idNumber)) {
-          final xrayImage = map['xrayImage']?.toString();
+          final xrayImage = map['originalXrayImage']?.toString() ?? map['xrayImage']?.toString();
+          final analysisResult = map['analysisResultJson'];
           if (patientId != null) _xrayImageCache[patientId] = xrayImage;
           if (idNumber != null) _xrayImageCache[idNumber] = xrayImage;
-          return xrayImage;
+          return {'xrayImage': xrayImage, 'analysisResultJson': analysisResult};
         }
       }
     }
@@ -1046,12 +1005,12 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
 
   // كارد صورة الأشعة (يبحث في xray_images)
   Widget _buildXrayImageCard(Map<String, dynamic> patientExam, BuildContext context) {
-    final patient = _safeConvertMap(patientExam['patient']);
+    final patient = safeConvertMap(patientExam['patient']);
     final String? patientId = patient['id']?.toString();
     final String? idNumber = patient['idNumber']?.toString();
 
-    return FutureBuilder<String?>(
-      future: _getXrayImageForPatient(patientId, idNumber),
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _getXrayImageAndAnalysisForPatient(patientId, idNumber),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -1059,7 +1018,9 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
-        final String? xrayBase64 = snapshot.data;
+        final data = snapshot.data;
+        final String? xrayBase64 = data?['xrayImage'];
+        final dynamic analysisResult = data?['analysisResultJson'];
         if (xrayBase64 == null || xrayBase64.isEmpty) {
           return Card(
             margin: const EdgeInsets.all(16),
@@ -1081,6 +1042,14 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         }
         try {
           final bytes = base64Decode(xrayBase64);
+          // استخراج قائمة corrected_class إذا توفرت
+          List<String> correctedClasses = [];
+          if (analysisResult != null && analysisResult is Map && analysisResult['detections'] is List) {
+            correctedClasses = (analysisResult['detections'] as List)
+                .where((d) => d is Map && d['corrected_class'] != null)
+                .map<String>((d) => d['corrected_class'].toString())
+                .toList();
+          }
           return Card(
             margin: const EdgeInsets.all(16),
             color: cardColor,
@@ -1121,7 +1090,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                           ),
                         ),
                       ),
-                    ); // تصحيح: إزالة الفاصلة المنقوطة الزائدة
+                    );
                   },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 16),
@@ -1143,6 +1112,50 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                     ),
                   ),
                 ),
+                // عرض نتائج التحليل بشكل منسق
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(),
+                      Text(
+                        'تحليل الصورة باستخدام الذكاء الصناعي:',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 16),
+                      ),
+                      if (correctedClasses.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('الأسنان المكتشفة:', style: const TextStyle(fontWeight: FontWeight.bold, color: textPrimary)),
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: correctedClasses.map((c) => Chip(
+                                  label: Text(c, style: const TextStyle(color: textSecondary)),
+                                  backgroundColor: const Color(0xFFF2F2F2),
+                                )).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (correctedClasses.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text('لا يوجد نتائج تحليل متوفرة', style: TextStyle(color: textSecondary)),
+                        ),
+                      // عرض الجدول الأصلي إذا رغبت
+                      if (analysisResult != null && analysisResult is Map && analysisResult['detections'] != null && analysisResult['detections'] is List && (analysisResult['detections'] as List).isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: _buildDetectionsTable(analysisResult['detections'] as List),
+                        ),
+                    ],
+                  ),
+                ),
               ],
             ),
           );
@@ -1160,61 +1173,284 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     );
   }
 
+  String _calculateAge(BuildContext context, dynamic birthDateValue) {
+    if (birthDateValue == null) return _translate(context, 'age_unknown');
+    final int timestamp;
+    if (birthDateValue is String) {
+      timestamp = int.tryParse(birthDateValue) ?? 0;
+    } else if (birthDateValue is int) {
+      timestamp = birthDateValue;
+    } else {
+      timestamp = 0;
+    }
+    if (timestamp <= 0) return _translate(context, 'age_unknown');
+    final birthDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final now = DateTime.now();
+    if (birthDate.isAfter(now)) return _translate(context, 'age_unknown');
+    final age = now.difference(birthDate);
+    final years = age.inDays ~/ 365;
+    final months = (age.inDays % 365) ~/ 30;
+    final days = (age.inDays % 365) % 30;
+    if (years > 0) {
+      return '$years ${_translate(context, 'years')}';
+    } else if (months > 0) {
+      return '$months ${_translate(context, 'months')}';
+    } else {
+      return '$days ${_translate(context, 'days')}';
+    }
+  }
+
+  Future<void> _loadDoctorSidebarInfo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final snapshot = await _patientsRef.child(user.uid).get();
+    if (snapshot.exists) {
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      final role = data['role']?.toString() ?? data['type']?.toString();
+      final firstName = data['firstName']?.toString().trim() ?? '';
+      final fatherName = data['fatherName']?.toString().trim() ?? '';
+      final grandfatherName = data['grandfatherName']?.toString().trim() ?? '';
+      final familyName = data['familyName']?.toString().trim() ?? '';
+      final fullName = [firstName, fatherName, grandfatherName, familyName].where((e) => e.isNotEmpty).join(' ');
+      if (role == 'dental_student') {
+        final imageUrl = data['imageUrl']?.toString() ?? '';
+        setState(() {
+          _doctorName = fullName.isNotEmpty ? fullName : 'الطالب';
+          _doctorImageUrl = imageUrl.isNotEmpty ? imageUrl : null;
+          _userRole = role;
+        });
+      } else {
+        final imageData = data['image']?.toString() ?? '';
+        setState(() {
+          _doctorName = fullName.isNotEmpty ? fullName : null;
+          _doctorImageUrl = imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : null;
+          _userRole = role;
+        });
+      }
+    } else {
+      setState(() {
+        _doctorName = null;
+        _doctorImageUrl = null;
+        _userRole = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = const Color(0xFF2A7A94);
-    final Color accentColor = const Color(0xFF4AB8D8);
+    final languageProvider = Provider.of<LanguageProvider>(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_translate(context, 'examined_patients')),
-        backgroundColor: primaryColor, // جعل لون الاب بار نفس اللون الاساسي
+        title: Text(
+          _translate(context, 'examined_patients'),
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 2,
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadAllExaminations,
+            tooltip: _translate(context, 'retry'),
+          ),
+        ],
       ),
-      drawer: (_userRole == 'dental_student'
-          ? StudentSidebar(
-              studentName: _doctorName,
-              studentImageUrl: _doctorImageUrl,
-            )
-          : DoctorSidebar(
-              primaryColor: primaryColor,
-              accentColor: accentColor,
-              userName: _doctorName ?? '',
-              userImageUrl: _doctorImageUrl,
-              translate: (ctx, key) => key,
-              parentContext: context,
-            )),
-      body: Stack(
+      backgroundColor: backgroundColor,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _hasError
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        _translate(context, 'error_loading'),
+                        style: const TextStyle(color: errorColor, fontSize: 18),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadAllExaminations,
+                        child: Text(_translate(context, 'retry')),
+                      ),
+                    ],
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: _translate(context, 'search_hint'),
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.search),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _filteredExaminations.length,
+                          itemBuilder: (context, index) {
+                            final patientExam = _filteredExaminations[index];
+                            return _buildPatientCard(patientExam, context);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildDetailSection({
+    required String title,
+    required List<dynamic> children, // <-- تغيير النوع لدعم List<List<Widget>>
+  }) {
+    final isScreening = title == 'Screening Form' || title == _translate(context, 'screening_form');
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+      width: double.infinity,
+      constraints: isScreening ? const BoxConstraints(minHeight: 320) : null,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            children: [
-              _buildSearchField(),
-              Expanded(
-                child: _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(color: primaryColor),
-                      )
-                    : _hasError
-                        ? _buildErrorWidget()
-                        : _filteredExaminations.isEmpty
-                            ? Center(
-                                child: Text(
-                                  _translate(context, 'no_patients'),
-                                  style: const TextStyle(color: textSecondary),
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: _filteredExaminations.length,
-                                itemBuilder: (context, index) {
-                                  return _buildPatientCard(
-                                      _filteredExaminations[index], context);
-                                },
-                              ),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF333333),
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (isScreening && children.length == 2)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: children[0] as List<Widget>,
+                  ),
+                ),
+                const SizedBox(width: 32),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: children[1] as List<Widget>,
+                  ),
+                ),
+              ],
+            )
+          else ...children.cast<Widget>(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF666666),
               ),
-              // كارد صورة الأشعة في أسفل الصفحة
-              // تم حذف كارد صورة الأشعة من قائمة المرضى ليظهر فقط في تفاصيل المريض
-            ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF333333),
+              ),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  List<List<Widget>> _buildScreeningDetails(Map<String, dynamic> screening) {
+    final List<Widget> general = [];
+    final List<Widget> oral = [];
+    void addGeneral(String label, dynamic value) {
+      if (value != null && value.toString().isNotEmpty) {
+        general.add(Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text('$label: ${value.toString()}'),
+        ));
+      }
+    }
+    void addOral(String label, dynamic value) {
+      if (value != null && value.toString().isNotEmpty) {
+        oral.add(Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text('$label: ${value.toString()}'),
+        ));
+      }
+    }
+    addGeneral('Chief Complaint', screening['chiefComplaint']);
+    addGeneral('Medications', screening['medications']);
+    addGeneral('Positive Answers Explanation', screening['positiveAnswersExplanation']);
+    addGeneral('Preventive Advice', screening['preventiveAdvice']);
+    if (screening['categories'] != null && screening['categories'] is List) {
+      oral.add(const Text('Oral Health Assessment:', style: TextStyle(fontWeight: FontWeight.bold)));
+      for (final category in screening['categories']) {
+        if (category is Map && category.containsKey('name') && category.containsKey('score')) {
+          oral.add(Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text('${category['name']}: ${category['score']}'),
+          ));
+        }
+      }
+    }
+    if (screening['totalScore'] != null && screening['totalScore'].toString().isNotEmpty) {
+      oral.add(Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text('Total Score: ${screening['totalScore']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+      ));
+    }
+    return [general, oral];
+  }
+
+  List<Widget> _buildPeriodontalDetails(Map<String, dynamic> chart) {
+    return chart.entries.map((entry) {
+      return Text('${entry.key}: ${entry.value.toString()}');
+    }).toList();
+  }
+
+  List<Widget> _buildDentalChartDetails(Map<String, dynamic> chart, BuildContext context) {
+    final List<Widget> widgets = [];
+    if (chart['selectedTeeth'] != null && chart['selectedTeeth'] is List) {
+      widgets.add(Text('Selected Teeth: ${(chart['selectedTeeth'] as List).join(', ')}'));
+    }
+    if (chart['teethConditions'] != null && chart['teethConditions'] is Map) {
+      final conditions = safeConvertMap(chart['teethConditions']);
+      conditions.forEach((tooth, disease) {
+        if (disease is String) {
+          widgets.add(Text('Tooth $tooth - $disease'));
+        }
+      });
+    }
+    return widgets;
   }
 }

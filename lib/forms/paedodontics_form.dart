@@ -47,6 +47,93 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
   final TextEditingController _doctorMarkController = TextEditingController();
   final TextEditingController _doctorNoteController = TextEditingController();
 
+  // New controllers and variables for additional fields
+  final TextEditingController chiefComplaintController = TextEditingController();
+  final TextEditingController historyOfComplaintController = TextEditingController();
+  final TextEditingController dentalHistoryController = TextEditingController();
+  final TextEditingController socialHistoryController = TextEditingController();
+  final TextEditingController extraOralExamController = TextEditingController();
+  final TextEditingController intraOralSoftTissueController = TextEditingController();
+  final TextEditingController plaqueIndexController = TextEditingController();
+  
+  final TextEditingController radiographsFindingsController = TextEditingController();
+  // Controllers for new fields
+  final TextEditingController crossbiteController = TextEditingController();
+  final TextEditingController oralHabitsController = TextEditingController();
+  // Controllers for missing fields
+  final TextEditingController overjetController = TextEditingController();
+  final TextEditingController overbiteController = TextEditingController();
+  final TextEditingController radiographicCariesController = TextEditingController();
+  final TextEditingController radiographicSupernumerariesController = TextEditingController();
+  final TextEditingController radiographicMissingTeethController = TextEditingController();
+  final TextEditingController radiographicPeriapicalLesionsController = TextEditingController();
+  final TextEditingController radiographicInterradicularLesionsController = TextEditingController();
+
+  // Hospitalization
+  String? hospitalization = 'No';
+  TextEditingController hospitalizationDateController = TextEditingController();
+  TextEditingController hospitalizationReasonController = TextEditingController();
+  TextEditingController hospitalizationMedicationController = TextEditingController();
+  DateTime? hospitalizationDate;
+
+  // Medical History options
+  final List<String> medicalHistoryOptions = [
+    'Blood disorder',
+    'Asthma',
+    'Cardiac disease',
+    'Allergy to',
+    'Endocrine',
+    'Others',
+  ];
+  List<String> selectedMedicalHistory = [];
+
+  // Oral Hygiene Level
+  String? oralHygieneLevel = 'Good';
+
+  // Molar Relationships
+  String? molarRelationshipPrimaryRight = 'Normal';
+  String? molarRelationshipPrimaryLeft = 'Normal';
+  String? molarRelationshipPermanentRight = 'Normal';
+  String? molarRelationshipPermanentLeft = 'Normal';
+  final List<String> molarOptions = ['Normal', 'Mesial', 'Distal'];
+
+  // Primate Space / Midline Deviation
+  String primateSpaceValue = 'Upper';
+  String midlineDeviation = 'No';
+
+  // Canine Palpable
+  String caninePalpable = 'No';
+  // شبكة مربعات Canine (ترقيم أسنان دائم مع فراغ في المنتصف)
+  final List<String> canineGridLabels = [
+    '17','16','15','14','13','12','11','', '21','22','23','24','25','26','27',
+    '47','46','45','44','43','42','41','', '31','32','33','34','35','36','37',
+  ];
+  List<bool> canineGridSelected = List.filled(30, false);
+
+  // Radiographs
+  bool radiographsTaken = false;
+
+  // متغير لحقل other في medical history
+  bool showOtherMedical = false;
+  final TextEditingController otherMedicalController = TextEditingController();
+
+  // Plaque index table controllers
+  late List<List<TextEditingController>> plaqueIndexControllers;
+
+  // خيارات الأشعة
+  bool radiographPeriapical = false;
+  bool radiographOcclusalU = false;
+  bool radiographOcclusalL = false;
+  bool radiographBitewingR = false;
+  bool radiographBitewingL = false;
+  bool radiographOPG = false;
+
+  // Controller for Other Investigations
+  final TextEditingController otherInvestigationsController = TextEditingController();
+
+  // Controller for Periapical details
+  final TextEditingController periapicalDetailsController = TextEditingController();
+
   final Map<String, Map<String, String>> _translations = {
     'clinical_requirements': {'ar': 'المتطلبات السريرية', 'en': 'Clinical Requirements'},
     'history_title': {'ar': 'أخذ التاريخ والفحص والتخطيط', 'en': 'History taking, examination, & treatment planning'},
@@ -135,7 +222,6 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
 
   Future<void> submitCase() async {
     if (!_formKey.currentState!.validate()) return;
-    
     setState(() => isSubmitting = true);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -153,14 +239,9 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
       } else {
         studentName = user.displayName ?? '';
       }
-
       final caseData = {
         'studentId': user.uid,
         'studentName': studentName,
-        'guardianName': guardianNameController.text,
-        'patientAddress': patientAddressController.text,
-        'patientPhone': patientPhoneController.text,
-        'diagnosis': diagnosisController.text,
         'groupId': widget.groupId,
         'caseNumber': widget.caseNumber,
         'patient': widget.patient,
@@ -170,8 +251,54 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
         'mark': null,
         'doctorComment': null,
         'submittedAt': DateTime.now().millisecondsSinceEpoch,
+        // جميع الحقول الإضافية:
+        'chiefComplaint': chiefComplaintController.text,
+        'historyOfComplaint': historyOfComplaintController.text,
+        'dentalHistory': dentalHistoryController.text,
+        'socialHistory': socialHistoryController.text,
+        'medicalHistory': selectedMedicalHistory,
+        'otherMedical': otherMedicalController.text,
+        'hospitalization': hospitalization,
+        'hospitalizationDate': hospitalizationDateController.text,
+        'hospitalizationReason': hospitalizationReasonController.text,
+        'hospitalizationMedication': hospitalizationMedicationController.text,
+        'extraOralExam': extraOralExamController.text,
+        'intraOralSoftTissue': intraOralSoftTissueController.text,
+        'oralHygieneLevel': oralHygieneLevel,
+        'plaqueIndex': plaqueIndexControllers.map((row) => row.map((c) => c.text).toList()).toList(),
+        'molarRelationshipPrimaryRight': molarRelationshipPrimaryRight,
+        'molarRelationshipPrimaryLeft': molarRelationshipPrimaryLeft,
+        'molarRelationshipPermanentRight': molarRelationshipPermanentRight,
+        'molarRelationshipPermanentLeft': molarRelationshipPermanentLeft,
+        'primateSpace': primateSpaceValue,
+        'midlineDeviation': (midlineDeviation == 'Yes' ? 'Yes' : 'No'),
+        'caninePalpable': caninePalpable,
+        'canineGridLabels': canineGridLabels,
+        'canineGridSelected': canineGridSelected,
+        'radiographsTaken': radiographsTaken,
+        'radiographPeriapical': radiographPeriapical,
+        'periapicalDetails': periapicalDetailsController.text,
+        'radiographOcclusalU': radiographOcclusalU,
+        'radiographOcclusalL': radiographOcclusalL,
+        'radiographBitewingR': radiographBitewingR,
+        'radiographBitewingL': radiographBitewingL,
+        'radiographOPG': radiographOPG,
+        'radiographsFindings': radiographsFindingsController.text,
+        'crossbite': crossbiteController.text,
+        'oralHabits': oralHabitsController.text,
+        'overjet': overjetController.text,
+        'overbite': overbiteController.text,
+        'radiographicCaries': radiographicCariesController.text,
+        'radiographicSupernumeraries': radiographicSupernumerariesController.text,
+        'radiographicMissingTeeth': radiographicMissingTeethController.text,
+        'radiographicPeriapicalLesions': radiographicPeriapicalLesionsController.text,
+        'radiographicInterradicularLesions': radiographicInterradicularLesionsController.text,
+        'otherInvestigations': otherInvestigationsController.text,
+        // أي متغيرات إضافية معرفة في الكلاس
+        'showOtherMedical': showOtherMedical,
+        'plaqueIndexControllerText': plaqueIndexController.text,
+        'molarOptions': molarOptions,
       };
-
       await db.child('paedodonticsCases').push().set(caseData);
       await _loadCurrentCase();
       setState(() => isSubmitting = false);
@@ -203,7 +330,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
       await db.child('paedodonticsCases').child(widget.initialData!['key']).update({
         'status': 'graded',
         'mark': mark,
-        'doctorGrade': mark, // إضافة doctorGrade لتظهر العلامة عند الطالب
+        'doctorGrade': mark,
         'doctorComment': _doctorNoteController.text,
         'diagnosis': diagnosisController.text,
         'gradedAt': DateTime.now().millisecondsSinceEpoch,
@@ -289,6 +416,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
   @override
   void initState() {
     super.initState();
+    plaqueIndexControllers = List.generate(2, (_) => List.generate(4, (_) => TextEditingController()));
     if (widget.initialData != null) {
       final data = widget.initialData!;
       guardianNameController.text = data['guardianName'] ?? '';
@@ -298,8 +426,119 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
       lastCaseStatus = data['status'];
       lastCaseMark = data['doctorGrade'] ?? data['mark'];
       lastDoctorComment = (data['rejectionReason'] ?? data['doctorComment'] ?? '').toString();
-      if (data['mark'] != null) _doctorMarkController.text = data['mark'].toString();
-      if (data['doctorComment'] != null) _doctorNoteController.text = data['doctorComment'];
+      if (data['mark'] != null && _doctorMarkController.text.isEmpty) _doctorMarkController.text = data['mark'].toString();
+      if (data['doctorComment'] != null && _doctorNoteController.text.isEmpty) _doctorNoteController.text = data['doctorComment'];
+      chiefComplaintController.text = data['chiefComplaint'] ?? '';
+      historyOfComplaintController.text = data['historyOfComplaint'] ?? '';
+      selectedMedicalHistory = List<String>.from(data['medicalHistory'] ?? []);
+      hospitalization = data['hospitalization'] ?? 'No';
+      if (data['hospitalizationDate'] != null) {
+        try {
+          // إذا كان التاريخ مخزن كـ int (millis)
+          if (data['hospitalizationDate'] is int) {
+            hospitalizationDate = DateTime.fromMillisecondsSinceEpoch(data['hospitalizationDate']);
+          } else if (data['hospitalizationDate'] is String && int.tryParse(data['hospitalizationDate']) != null) {
+            hospitalizationDate = DateTime.fromMillisecondsSinceEpoch(int.parse(data['hospitalizationDate']));
+          } else if (data['hospitalizationDate'] is String) {
+            hospitalizationDate = DateTime.tryParse(data['hospitalizationDate']);
+          }
+          if (hospitalizationDate != null) {
+            hospitalizationDateController.text = "${hospitalizationDate!.year}-${hospitalizationDate!.month.toString().padLeft(2, '0')}-${hospitalizationDate!.day.toString().padLeft(2, '0')}";
+          } else {
+            hospitalizationDateController.text = data['hospitalizationDate'].toString();
+          }
+        } catch (_) {
+          hospitalizationDateController.text = data['hospitalizationDate'].toString();
+        }
+      }
+      hospitalizationReasonController.text = data['hospitalizationReason'] ?? '';
+      hospitalizationMedicationController.text = data['hospitalizationMedication'] ?? '';
+      dentalHistoryController.text = data['dentalHistory'] ?? '';
+      socialHistoryController.text = data['socialHistory'] ?? '';
+      extraOralExamController.text = data['extraOralExam'] ?? '';
+      intraOralSoftTissueController.text = data['intraOralSoftTissue'] ?? '';
+      oralHygieneLevel = data['oralHygieneLevel'] ?? 'Good';
+      plaqueIndexController.text = data['plaqueIndex']?.toString() ?? '';
+      molarRelationshipPrimaryRight = data['molarRelationshipPrimaryRight'] ?? 'Normal';
+      molarRelationshipPrimaryLeft = data['molarRelationshipPrimaryLeft'] ?? 'Normal';
+      molarRelationshipPermanentRight = data['molarRelationshipPermanentRight'] ?? 'Normal';
+      molarRelationshipPermanentLeft = data['molarRelationshipPermanentLeft'] ?? 'Normal';
+      // midlineDeviation: خذ القيمة كما هي من الداتا بيس إذا كانت نص
+      if (data['midlineDeviation'] != null) {
+        if (data['midlineDeviation'] is bool) {
+          midlineDeviation = data['midlineDeviation'] ? 'Yes' : 'No';
+        } else {
+          midlineDeviation = data['midlineDeviation'].toString();
+        }
+      }
+     
+      caninePalpable = data['caninePalpable'] == true ? 'Yes' : 'No';
+      // استرجاع قيم radiographs
+      radiographPeriapical = data['radiographPeriapical'] == true;
+      radiographOcclusalU = data['radiographOcclusalU'] == true;
+      radiographOcclusalL = data['radiographOcclusalL'] == true;
+      radiographBitewingR = data['radiographBitewingR'] == true;
+      radiographBitewingL = data['radiographBitewingL'] == true;
+      radiographOPG = data['radiographOPG'] == true;
+      radiographsTaken = data['radiographsTaken'] == true;
+      radiographsFindingsController.text = data['radiographsFindings'] ?? '';
+      primateSpaceValue = data['primateSpace'] ?? 'None';
+
+      // تعبئة قيم plaqueIndexControllers من الداتا بيس إذا كانت موجودة
+      if (data['plaqueIndex'] != null && data['plaqueIndex'] is List) {
+        final List<dynamic> rows = data['plaqueIndex'];
+        for (int i = 0; i < rows.length && i < plaqueIndexControllers.length; i++) {
+          final row = rows[i];
+          if (row is List) {
+            for (int j = 0; j < row.length && j < plaqueIndexControllers[i].length; j++) {
+              plaqueIndexControllers[i][j].text = row[j]?.toString() ?? '';
+            }
+          }
+        }
+      }
+      overjetController.text = data['overjet'] ?? '';
+      overbiteController.text = data['overbite'] ?? '';
+      crossbiteController.text = data['crossbite'] ?? '';
+      oralHabitsController.text = data['oralHabits'] ?? '';
+      // استرجاع قيمة caninePalpable
+      if (data['caninePalpable'] != null) {
+        caninePalpable = data['caninePalpable'].toString();
+      }
+      // استرجاع قيمة canineGridLabels إذا كانت موجودة
+      if (data['canineGridLabels'] != null && data['canineGridLabels'] is List) {
+        final List<dynamic> labels = data['canineGridLabels'];
+        for (int i = 0; i < labels.length && i < canineGridLabels.length; i++) {
+          canineGridLabels[i] = labels[i]?.toString() ?? '';
+        }
+      }
+      // استرجاع قيمة canineGridSelected إذا كانت موجودة
+      if (data['canineGridSelected'] != null && data['canineGridSelected'] is List) {
+        final List<dynamic> selected = data['canineGridSelected'];
+        for (int i = 0; i < selected.length && i < canineGridSelected.length; i++) {
+          canineGridSelected[i] = selected[i] == true;
+        }
+      }
+      // استرجاع قيمة otherMedical إذا كانت موجودة
+      if (data['otherMedical'] != null && data['otherMedical'].toString().isNotEmpty) {
+        otherMedicalController.text = data['otherMedical'];
+        showOtherMedical = true;
+        if (!selectedMedicalHistory.contains('Others')) {
+          selectedMedicalHistory.add('Others');
+        }
+      }
+
+      // تعبئة radiographic findings من الداتا بيس
+      radiographicCariesController.text = data['radiographicCaries'] ?? '';
+      radiographicSupernumerariesController.text = data['radiographicSupernumeraries'] ?? '';
+      radiographicMissingTeethController.text = data['radiographicMissingTeeth'] ?? '';
+      radiographicPeriapicalLesionsController.text = data['radiographicPeriapicalLesions'] ?? '';
+      radiographicInterradicularLesionsController.text = data['radiographicInterradicularLesions'] ?? '';
+      // تعبئة حقل otherInvestigations من الداتا بيس
+      otherInvestigationsController.text = data['otherInvestigations']?.toString() ?? '';
+      // استرجاع تفاصيل Periapical إذا كانت موجودة
+      if (data['periapicalDetails'] != null) {
+        periapicalDetailsController.text = data['periapicalDetails'].toString();
+      }
     }
     _loadCurrentCase();
   }
@@ -312,258 +551,1096 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
     diagnosisController.dispose();
     _doctorMarkController.dispose();
     _doctorNoteController.dispose();
+    chiefComplaintController.dispose();
+    historyOfComplaintController.dispose();
+    dentalHistoryController.dispose();
+    socialHistoryController.dispose();
+    extraOralExamController.dispose();
+    intraOralSoftTissueController.dispose();
+    plaqueIndexController.dispose();
+    radiographsFindingsController.dispose();
+    otherMedicalController.dispose();
+    hospitalizationDateController.dispose();
+    hospitalizationReasonController.dispose();
+    hospitalizationMedicationController.dispose();
+    crossbiteController.dispose();
+    oralHabitsController.dispose();
+    otherInvestigationsController.dispose();
+    overjetController.dispose();
+    overbiteController.dispose();
+    radiographicCariesController.dispose();
+    radiographicSupernumerariesController.dispose();
+    radiographicMissingTeethController.dispose();
+    radiographicPeriapicalLesionsController.dispose();
+    radiographicInterradicularLesionsController.dispose();
+    periapicalDetailsController.dispose();
+    for (var row in plaqueIndexControllers) {
+      for (var c in row) {
+        c.dispose();
+      }
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final Color primaryColor = const Color(0xFF2A7A94);
+
     return Scaffold(
-      appBar: AppBar(title: Text('${_caseTypeLabel} ${widget.caseNumber}')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // معلومات الحالة
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
-                ),
-                child: Text(
-                  'نوع الحالة: ${_caseTypeLabel}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              
-              // معلومات المريض
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  border: Border(
-                    top: BorderSide(color: Colors.grey.shade300),
-                    bottom: BorderSide(color: Colors.grey.shade300),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'معلومات المريض:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
+      appBar: AppBar(
+        title: Text('${_caseTypeLabel}  0{widget.caseNumber}'),
+        centerTitle: true,
+        backgroundColor: primaryColor, // لون أساسي للخلفية
+        iconTheme: IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
+      body: Container(
+        color: primaryColor.withOpacity(0.06),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // معلومات المريض في الأعلى
+                  Card(
+                    color: Colors.white,
+                    elevation: 2,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.person, color: primaryColor),
+                              const SizedBox(width: 8),
+                              Text(
+                                widget.patient['fullName'] ?? '',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: primaryColor),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.cake, color: primaryColor, size: 20),
+                              const SizedBox(width: 6),
+                              Text(
+                                (() {
+                                  // حساب العمر من birthDate إذا وجد
+                                  if (widget.patient['birthDate'] != null) {
+                                    try {
+                                      final birthDateMillis = widget.patient['birthDate'];
+                                      final birthDate = DateTime.fromMillisecondsSinceEpoch(birthDateMillis is int ? birthDateMillis : int.parse(birthDateMillis.toString()));
+                                      final now = DateTime.now();
+                                      int years = now.year - birthDate.year;
+                                      if (now.month < birthDate.month || (now.month == birthDate.month && now.day < birthDate.day)) {
+                                        years--;
+                                      }
+                                      return '$years سنة';
+                                    } catch (_) {}
+                                  }
+                                  // إذا لم يوجد birthDate استخدم age
+                                  return (widget.patient['age'] != null) ? '${widget.patient['age']} سنة' : '-';
+                                })(),
+                                style: const TextStyle(fontSize: 15),
+                              ),
+                              const SizedBox(width: 18),
+                              Icon(Icons.wc, color: primaryColor, size: 20),
+                              const SizedBox(width: 6),
+                              Text(
+                                (widget.patient['gender'] ?? '').toString().toLowerCase() == 'male' ? 'ذكر' : (widget.patient['gender'] ?? '').toString().toLowerCase() == 'female' ? 'أنثى' : '-',
+                                style: const TextStyle(fontSize: 15),
+                              ),
+                              const SizedBox(width: 18),
+                              Icon(Icons.calendar_today, color: primaryColor, size: 20),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}',
+                                style: const TextStyle(fontSize: 15),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    _buildPatientInfoRow('الاسم', widget.patient['fullName'] ?? ''),
-                    _buildPatientInfoRow('رقم الهوية', widget.patient['idNumber'] ?? ''),
-                    if (widget.patient['studentId'] != null)
-                      _buildPatientInfoRow('الرقم الجامعي', widget.patient['studentId']),
-                  ],
-                ),
-              ),
-              
-              // حقول النموذج
-              TextFormField(
-                controller: guardianNameController,
-                decoration: InputDecoration(
-                  labelText: _translate('guardian_name'),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  // معلومات الحالة
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                    ),
+                    child: Text(
+                      'نوع الحالة: ${_caseTypeLabel}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  disabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  
+                  // حقول النموذج
+                  // --- الحقول الإضافية ---
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: chiefComplaintController,
+                    decoration: const InputDecoration(
+                      labelText: 'Chief Complaint',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
                   ),
-                ),
-                validator: (value) => value?.isEmpty ?? true ? 'يجب إدخال اسم ولي الأمر' : null,
-                onChanged: (v) => setState(() => guardianName = v),
-                enabled: lastCaseStatus != 'pending' && lastCaseStatus != 'graded' && lastCaseStatus != 'pending_review',
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: patientAddressController,
-                decoration: InputDecoration(
-                  labelText: _translate('patient_address'),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: historyOfComplaintController,
+                    decoration: const InputDecoration(
+                      labelText: 'History of Complaint',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  // Dental History
+                  TextFormField(
+                    controller: dentalHistoryController,
+                    decoration: const InputDecoration(
+                      labelText: 'Dental History',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                  disabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  const SizedBox(height: 16),
+                  // Social History
+                  TextFormField(
+                    controller: socialHistoryController,
+                    decoration: const InputDecoration(
+                      labelText: 'Social History',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                validator: (value) => value?.isEmpty ?? true ? 'يجب إدخال عنوان المريض' : null,
-                onChanged: (v) => setState(() => patientAddress = v),
-                enabled: lastCaseStatus != 'pending' && lastCaseStatus != 'graded' && lastCaseStatus != 'pending_review',
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: patientPhoneController,
-                decoration: InputDecoration(
-                  labelText: _translate('patient_phone'),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  // Medical History (CheckboxListTile) عمودين
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Medical History', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: 4.5,
+                    children: [
+                      ...medicalHistoryOptions.map((option) => Theme(
+                            data: Theme.of(context).copyWith(
+                              unselectedWidgetColor: Colors.white, // لون غير محدد أبيض
+                              checkboxTheme: CheckboxThemeData(
+                                fillColor: MaterialStateProperty.resolveWith<Color>((states) {
+                                  if (states.contains(MaterialState.selected)) {
+                                    return primaryColor; // عند التحديد يصبح اللون الأساسي
+                                  }
+                                  return Colors.white; // غير محدد أبيض
+                                }),
+                                checkColor: MaterialStateProperty.all(Colors.white), // لون علامة الصح
+                              ),
+                            ),
+                            child: CheckboxListTile(
+                              title: Text(option),
+                              value: selectedMedicalHistory.contains(option),
+                              onChanged: (val) {
+                                setState(() {
+                                  if (val == true) {
+                                    selectedMedicalHistory.add(option);
+                                    if (option == 'Others') showOtherMedical = true;
+                                  } else {
+                                    selectedMedicalHistory.remove(option);
+                                    if (option == 'Others') {
+                                      showOtherMedical = false;
+                                      otherMedicalController.clear();
+                                    }
+                                  }
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              tristate: false,
+                            ),
+                          )),
+                    ],
                   ),
-                  disabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
+                  if (showOtherMedical)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: TextFormField(
+                        controller: otherMedicalController,
+                        decoration: const InputDecoration(
+                          labelText: 'Please specify Other',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (showOtherMedical && (value == null || value.isEmpty)) {
+                            return 'Required';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: 16), // فراغ بين Medical History و Hospitalization
+                  // Hospitalization (RadioListTile)
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Hospitalization', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                ),
-                keyboardType: TextInputType.phone,
-                validator: (value) => value?.isEmpty ?? true ? 'يجب إدخال رقم الهاتف' : null,
-                onChanged: (v) => setState(() => patientPhone = v),
-                enabled: lastCaseStatus != 'pending' && lastCaseStatus != 'graded' && lastCaseStatus != 'pending_review',
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: diagnosisController,
-                decoration: InputDecoration(
-                  labelText: 'التشخيص',
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  disabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                ),
-                onChanged: (v) => setState(() {}),
-                enabled: lastCaseStatus != 'pending' && lastCaseStatus != 'graded' && lastCaseStatus != 'pending_review',
-              ),
-              const SizedBox(height: 24),
-              
-              // حالة التقييم - تظهر للجميع
-              if (lastCaseStatus != null) _buildCaseStatusSection(),
-
-              // حقول التقييم للدكتور تظهر فقط إذا الحالة pending والمستخدم دكتور فعلياً من قاعدة البيانات
-              FutureBuilder<bool>(
-                future: _isDoctor(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done || !snapshot.hasData || !snapshot.data!) {
-                    return const SizedBox.shrink();
-                  }
-                  if (lastCaseStatus == 'pending' && widget.initialData != null) {
-                    return Column(
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      unselectedWidgetColor: primaryColor,
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
                       children: [
-                        const Divider(height: 32),
-                        Text('تقييم الدكتور', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _doctorMarkController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'العلامة (من 35)',
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Yes'),
+                            value: 'Yes',
+                            groupValue: hospitalization,
+                            onChanged: (val) => setState(() => hospitalization = val),
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('No'),
+                            value: 'No',
+                            groupValue: hospitalization,
+                            onChanged: (val) => setState(() => hospitalization = val),
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (hospitalization == 'Yes') ...[
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: hospitalizationDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            hospitalizationDate = picked;
+                            hospitalizationDateController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                          });
+                        }
+                      },
+                      child: AbsorbPointer(
+                        child: TextFormField(
+                          controller: hospitalizationDateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Date',
                             border: OutlineInputBorder(),
+                            suffixIcon: Icon(Icons.calendar_today),
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty) return 'الرجاء إدخال العلامة';
-                            final mark = int.tryParse(value);
-                            if (mark == null || mark < 0 || mark > 35) return 'العلامة يجب أن تكون بين 0 و 35';
+                            if (hospitalization == 'Yes' && (value == null || value.isEmpty)) {
+                              return 'Required';
+                            }
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _doctorNoteController,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            labelText: 'ملاحظات الدكتور (اختياري)',
-                            border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: hospitalizationReasonController,
+                      decoration: const InputDecoration(
+                        labelText: 'Reason',
+                        border: OutlineInputBorder(),
+                      ),
+                      minLines: 2,
+                      maxLines: 4,
+                      validator: (value) {
+                        if (hospitalization == 'Yes' && (value == null || value.isEmpty)) {
+                          return 'Required';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: hospitalizationMedicationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Medication',
+                        border: OutlineInputBorder(),
+                      ),
+                      minLines: 2,
+                      maxLines: 4,
+                      validator: (value) {
+                        if (hospitalization == 'Yes' && (value == null || value.isEmpty)) {
+                          return 'Required';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: extraOralExamController,
+                    decoration: const InputDecoration(
+                      labelText: 'Extra Oral Exam',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: intraOralSoftTissueController,
+                    decoration: const InputDecoration(
+                      labelText: 'Intra Oral (Soft Tissue)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Oral Hygiene Level (RadioListTile)
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Oral Hygiene Level', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      unselectedWidgetColor: primaryColor,
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Good'),
+                            value: 'Good',
+                            groupValue: oralHygieneLevel,
+                            onChanged: (val) => setState(() => oralHygieneLevel = val),
+                            dense: true,
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        Row(
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Fair'),
+                            value: 'Fair',
+                            groupValue: oralHygieneLevel,
+                            onChanged: (val) => setState(() => oralHygieneLevel = val),
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Poor'),
+                            value: 'Poor',
+                            groupValue: oralHygieneLevel,
+                            onChanged: (val) => setState(() => oralHygieneLevel = val),
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Plaque index table
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade800, width: 1.2),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white,
+                    ),
+                    child: Table(
+                      border: TableBorder(
+                        top: BorderSide(color: Colors.grey.shade800, width: 1.5),
+                        horizontalInside: BorderSide(color: Colors.grey.shade800, width: 1.2),
+                        verticalInside: BorderSide(color: Colors.grey.shade800, width: 1.2),
+                        left: BorderSide.none,
+                        right: BorderSide.none,
+                        bottom: BorderSide.none,
+                      ),
+                      columnWidths: const {
+                        0: FlexColumnWidth(2),
+                        1: FlexColumnWidth(1.2),
+                        2: FlexColumnWidth(1.2),
+                        3: FlexColumnWidth(1.2),
+                        4: FlexColumnWidth(1.2),
+                      },
+                      children: [
+                        TableRow(
                           children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.check),
-                                label: const Text('حفظ التقييم'),
-                                onPressed: isSubmitting ? null : _onGradePressed,
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                            TableCell(
+                              verticalAlignment: TableCellVerticalAlignment.fill,
+                              child: Container(
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.all(8),
+                                height: 100, // زيادة الارتفاع لمحاكاة الدمج العمودي
+                                child: Text('Plaque index:', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.close),
-                                label: const Text('رفض الحالة'),
-                                onPressed: isSubmitting ? null : _onRejectPressed,
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                              ),
+                            const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text('16', textAlign: TextAlign.center),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text('22/62', textAlign: TextAlign.center),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text('24/64', textAlign: TextAlign.center),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Text('Total', textAlign: TextAlign.center),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        const Text('لا يمكن إغلاق النافذة إلا بعد تقييم الحالة أو رفضها مع ذكر السبب.',
-                          style: TextStyle(color: Colors.orange, fontSize: 13)),
+                        // صفان فارغان للكتابة (بدون عمود أول)
+                        for (int i = 0; i < 2; i++)
+                          TableRow(
+                            children: [
+                              const SizedBox(),
+                              for (int j = 0; j < 4; j++)
+                                Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: TextFormField(
+                                    controller: plaqueIndexControllers[i][j],
+                                    textAlign: TextAlign.center,
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                    ),
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        // صف عناوين الأسنان السفلية
+                        TableRow(
+                          children: [
+                            const SizedBox(),
+                            const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Text('44/84', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Text('42/82', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Text('36', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(),
+                          ],
+                        ),
                       ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-
-              // زر الإرسال - يظهر فقط للطالب إذا لم تكن الحالة pending أو graded
-              if (lastCaseStatus != 'pending' && lastCaseStatus != 'graded' && !_isDoctorView())
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Molar Relationships (Primary)
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Molar Relationships (Primary)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
                       ),
                     ),
-                    onPressed: isSubmitting ? null : submitCase,
-                    child: isSubmitting
-                        ? const CircularProgressIndicator()
-                        : Text(
-                            _translate('send_case'),
-                            style: const TextStyle(fontSize: 16),
-                          ),
+                    child: Row(
+                      children: [
+                        const Text('Right:'),
+                        ...molarOptions.map((opt) => Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(opt),
+                                value: opt,
+                                groupValue: molarRelationshipPrimaryRight,
+                                onChanged: (val) => setState(() => molarRelationshipPrimaryRight = val),
+                              ),
+                            )),
+                      ],
+                    ),
                   ),
-                ),
-            ],
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('Left:'),
+                        ...molarOptions.map((opt) => Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(opt),
+                                value: opt,
+                                groupValue: molarRelationshipPrimaryLeft,
+                                onChanged: (val) => setState(() => molarRelationshipPrimaryLeft = val),
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+                  // Molar Relationships (Permanent)
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Molar Relationships (Permanent)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('Right:'),
+                        ...molarOptions.map((opt) => Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(opt),
+                                value: opt,
+                                groupValue: molarRelationshipPermanentRight,
+                                onChanged: (val) => setState(() => molarRelationshipPermanentRight = val),
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('Left:'),
+                        ...molarOptions.map((opt) => Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(opt),
+                                value: opt,
+                                groupValue: molarRelationshipPermanentLeft,
+                                onChanged: (val) => setState(() => molarRelationshipPermanentLeft = val),
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+                  // Primate Space (Radio buttons: Upper, Lower)
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Primate Space', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Upper'),
+                            value: 'Upper',
+                            groupValue: primateSpaceValue,
+                            onChanged: (val) => setState(() => primateSpaceValue = val!),
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Lower'),
+                            value: 'Lower',
+                            groupValue: primateSpaceValue,
+                            onChanged: (val) => setState(() => primateSpaceValue = val!),
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Midline Deviation as Radio Buttons
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Midline Deviation', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Yes'),
+                            value: 'Yes',
+                            groupValue: midlineDeviation,
+                            onChanged: (val) => setState(() => midlineDeviation = val!),
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('No'),
+                            value: 'No',
+                            groupValue: midlineDeviation,
+                            onChanged: (val) => setState(() => midlineDeviation = val!),
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Crossbite / Oral Habits / Overjet / Overbite
+                 
+                  const SizedBox(height: 12),
+                  // Overjet & Overbite fields in the same row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: overjetController,
+                          decoration: const InputDecoration(
+                            labelText: 'Overjet',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: overbiteController,
+                          decoration: const InputDecoration(
+                            labelText: 'Overbite',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Crossbite & Oral habits fields in the same row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: crossbiteController,
+                          decoration: const InputDecoration(
+                            labelText: 'Crossbite',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: oralHabitsController,
+                          decoration: const InputDecoration(
+                            labelText: 'Oral habits',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Canine Palpable
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Canine Palpable', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      radioTheme: RadioThemeData(
+                        fillColor: MaterialStateProperty.all(primaryColor),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Yes'),
+                            value: 'Yes',
+                            groupValue: caninePalpable,
+                            onChanged: (val) => setState(() => caninePalpable = val!),
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('No'),
+                            value: 'No',
+                            groupValue: caninePalpable,
+                            onChanged: (val) => setState(() => caninePalpable = val!),
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // شبكة مربعات Canine (صفين مع فراغ في المنتصف)
+                  const SizedBox(height: 10),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 15,
+                      mainAxisSpacing: 6,
+                      crossAxisSpacing: 6,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: 30,
+                    itemBuilder: (context, index) {
+                      final label = canineGridLabels[index];
+                      if (label == '') {
+                        return const SizedBox(); // فراغ في المنتصف
+                      }
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            canineGridSelected[index] = !canineGridSelected[index];
+                          });
+                        },
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: canineGridSelected[index] ? primaryColor : Colors.white,
+                            border: Border.all(color: primaryColor, width: 1.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: canineGridSelected[index] ? Colors.white : primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Checkboxes للأشعة
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Radiographs:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: primaryColor, // اجعل اللون هو اللون الأساسي
+                      ),
+                    ),
+                  ),
+                  Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CheckboxListTile(
+                                  title: const Text('Periapical'),
+                                  value: radiographPeriapical,
+                                  onChanged: (val) => setState(() => radiographPeriapical = val ?? false),
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                if (radiographPeriapical)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 16, right: 8, bottom: 4),
+                                    child: SizedBox(
+                                      height: 38,
+                                      child: TextFormField(
+                                        controller: periapicalDetailsController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Details',
+                                          border: OutlineInputBorder(),
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: CheckboxListTile(
+                              title: const Text('Occlusal (U)'),
+                              value: radiographOcclusalU,
+                              onChanged: (val) => setState(() => radiographOcclusalU = val ?? false),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: CheckboxListTile(
+                              title: const Text('Occlusal (L)'),
+                              value: radiographOcclusalL,
+                              onChanged: (val) => setState(() => radiographOcclusalL = val ?? false),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CheckboxListTile(
+                              title: const Text('Bitewing (R)'),
+                              value: radiographBitewingR,
+                              onChanged: (val) => setState(() => radiographBitewingR = val ?? false),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          Expanded(
+                            child: CheckboxListTile(
+                              title: const Text('Bitewing (L)'),
+                              value: radiographBitewingL,
+                              onChanged: (val) => setState(() => radiographBitewingL = val ?? false),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          Expanded(
+                            child: CheckboxListTile(
+                              title: const Text('OPG'),
+                              value: radiographOPG,
+                              onChanged: (val) => setState(() => radiographOPG = val ?? false),
+                              controlAffinity: ListTileControlAffinity.leading,
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  // Radiographic Findings section
+                  const SizedBox(height: 16),
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Radiographic Findings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: radiographicCariesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Caries',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: radiographicSupernumerariesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Supernumeraries',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: radiographicMissingTeethController,
+                          decoration: const InputDecoration(
+                            labelText: 'Missing teeth',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: radiographicPeriapicalLesionsController,
+                          decoration: const InputDecoration(
+                            labelText: 'Periapical lesions',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: radiographicInterradicularLesionsController,
+                          decoration: const InputDecoration(
+                            labelText: 'Interradicular lesions',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: SizedBox()), // فراغ لتكملة الصف
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // --- نهاية الحقول الإضافية ---
+
+                  // Other Investigations section
+                  const SizedBox(height: 16),
+                  Container(
+                    alignment: Alignment.centerLeft,
+                    child: const Text('Other Investigations', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: otherInvestigationsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Other Investigations',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+
+                  // حالة التقييم - تظهر للجميع
+                  if (lastCaseStatus != null) _buildCaseStatusSection(),
+
+                  // حقول التقييم للدكتور تظهر فقط إذا الحالة pending والمستخدم دكتور فعلياً من قاعدة البيانات
+                  FutureBuilder<bool>(
+                    future: _isDoctor(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done || !snapshot.hasData || !snapshot.data!) {
+                        return const SizedBox.shrink();
+                      }
+                      if (lastCaseStatus == 'pending' && widget.initialData != null) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextFormField(
+                                controller: _doctorMarkController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'العلامة (من 0 إلى 35)',
+                                  border: OutlineInputBorder(),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'الرجاء إدخال العلامة';
+                                  final mark = int.tryParse(value);
+                                  if (mark == null || mark < 0 || mark > 35) return 'العلامة يجب أن تكون بين 0 و 35';
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _doctorNoteController,
+                                minLines: 2,
+                                maxLines: 4,
+                                decoration: const InputDecoration(
+                                  labelText: 'ملاحظات الدكتور',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      icon: const Icon(Icons.check, color: Colors.white),
+                                      label: const Text('إضافة العلامة والموافقة'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      onPressed: isSubmitting ? null : _onGradePressed,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      icon: const Icon(Icons.close, color: Colors.white),
+                                      label: const Text('رفض الحالة'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      onPressed: isSubmitting ? null : _onRejectPressed,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              const Text('لا يمكن إغلاق النافذة إلا بعد تقييم الحالة أو رفضها مع ذكر السبب.',
+                                style: TextStyle(color: Colors.orange, fontSize: 13)),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+
+                  // زر الإرسال - يظهر فقط للطالب إذا لم تكن الحالة pending أو graded
+                  if (lastCaseStatus != 'pending' && lastCaseStatus != 'graded' && !_isDoctorView())
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: isSubmitting ? null : submitCase,
+                        child: isSubmitting
+                            ? const CircularProgressIndicator()
+                            : Text(
+                                _translate('send_case'),
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

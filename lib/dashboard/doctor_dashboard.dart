@@ -13,6 +13,7 @@ import '../Doctor/doctor_sidebar.dart';
 import '../notifications_page.dart';
 import '../Doctor/prescription_page.dart';
 import '../Doctor/doctor_xray_request_page.dart';
+import '../Doctor/assign_patients_to_student_page.dart';
 
 class SupervisorDashboard extends StatefulWidget {
   const SupervisorDashboard({super.key});
@@ -542,6 +543,19 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
             context,
             MaterialPageRoute(
               builder: (context) => const DoctorXrayRequestPage(),
+            ),
+          );
+        }
+      },
+      {
+        'icon': Icons.assignment_ind,
+        'title': 'تعيين مرضى للطلاب',
+        'color': Colors.indigo,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AssignPatientsToStudentPage(),
             ),
           );
         }

@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../radiology/radiology_sidebar.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class XrayRequestListPage extends StatefulWidget {
   const XrayRequestListPage({Key? key}) : super(key: key);
@@ -362,8 +364,23 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
     }
     setState(() { _isUploading = true; });
     final base64Image = base64Encode(xrayImageBytes!);
+    // إرسال الصورة إلى السيرفر لتحليلها
+    Map<String, dynamic>? analysisResultJson;
+    String? analyzedImageBase64;
+    try {
+      final response = await fetchAnalyzedXray(base64Image);
+      if (response != null) {
+        analysisResultJson = response;
+        if (response['analyzedImage'] != null) {
+          analyzedImageBase64 = response['analyzedImage'];
+        }
+      }
+    } catch (e) {
+      analyzedImageBase64 = null;
+      analysisResultJson = null;
+    }
     final xrayImagesRef = FirebaseDatabase.instance.ref('xray_images');
-    // حفظ بيانات صورة الأشعة في مجموعة جديدة مع الموقع المطلوب
+    // حفظ بيانات صورة الأشعة الأصلية والمحللة في مجموعة جديدة مع الموقع المطلوب، مع حفظ كل الجيسون الراجع من الAPI
     await xrayImagesRef.push().set({
       'patientName': _nameController.text.trim(),
       'idNumber': _idController.text.trim(),
@@ -373,13 +390,43 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
       'tooth': req['tooth'],
       'groupTeeth': req['groupTeeth'],
       'patientId': req['patientId'],
-      'xrayImage': base64Image,
+      'originalXrayImage': base64Image,
+      'analyzedXrayImage': analyzedImageBase64 ?? '',
+      'analysisResultJson': analysisResultJson ?? {},
       'location': req['location'], // إضافة الموقع المطلوب
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
     setState(() { _isUploading = false; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم رفع صورة الأشعة بنجاح')));
     Navigator.pop(context);
+  }
+
+  // دالة إرسال الصورة إلى السيرفر واستقبال الصورة المحللة
+  Future<Map<String, dynamic>?> fetchAnalyzedXray(String base64Image) async {
+    // عدل الرابط حسب عنوان السيرفر الفعلي
+    const String apiUrl = 'https://xraymodel.fly.dev/analyze';
+    try {
+      // فك تشفير base64 إلى bytes
+      final imageBytes = base64Decode(base64Image);
+      final request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'image',
+          imageBytes,
+          filename: 'xray.jpg',
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        print('Server response: \\n${response.body}');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('Error in fetchAnalyzedXray: $e');
+    }
+    return null;
   }
 
   @override

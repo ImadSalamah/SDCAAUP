@@ -34,10 +34,8 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
   // Data lists
   List<Map<String, dynamic>> _doctorsList = [];
   final List<String> _clinicsList = ['العيادة 1', 'العيادة 2', 'العيادة 3'];
-  final List<Map<String, String>> _coursesList = [
-    {'id': '080114140', 'name': 'Paedodontics I (080114140)'},
-    {'id': '080114141', 'name': 'Orthodontics (080114141)'},
-  ];
+  List<Map<String, String>> _coursesList = [];
+  List<Map<String, dynamic>> _studentsForSelectedCourse = [];
   final List<String> _daysList = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
   bool _isLoading = false;
 

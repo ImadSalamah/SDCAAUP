@@ -11,6 +11,7 @@ import '../Admin/add_student.dart';
 import '../Admin/manage_study_groups_page.dart';
 import '../Admin/admin_sidebar.dart';
 import '../notifications_page.dart';
+import '../Admin/assign_patients_admin_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -430,7 +431,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     child: GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 4,
+                      itemCount: 5,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: gridCount,
                         crossAxisSpacing: 15,
@@ -509,6 +510,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     translate: _translate,
                                     onLogout: _logout,
                                   ),
+                                ),
+                              );
+                            },
+                          },
+                          {
+                            'icon': Icons.assignment_ind,
+                            'title': _isArabic(context) ? 'تعيين المرضى للطلاب' : 'Assign Patients to Students',
+                            'color': Colors.deepPurple,
+                            'onTap': () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AssignPatientsAdminPage(),
                                 ),
                               );
                             },

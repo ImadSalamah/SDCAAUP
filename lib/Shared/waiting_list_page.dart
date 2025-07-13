@@ -381,11 +381,7 @@ class _WaitingListPageState extends State<WaitingListPage> {
         patientDataWithExam['examData'] = latestExam['examData'];
       }
 
-      // احذف من قائمة الانتظار باستخدام key الخاص بالwaitingList
-      String? waitingListId = patientData['id']?.toString();
-      if (waitingListId != null && waitingListId.isNotEmpty) {
-        await _waitingListRef.child(waitingListId).remove();
-      }
+      // لا تحذف من قائمة الانتظار هنا، سيتم الحذف عند الحفظ في الفحص السريري
       if (!mounted) return;
 
       final String doctorId = user.uid;

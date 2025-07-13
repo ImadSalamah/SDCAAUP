@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ScreeningForm extends StatefulWidget {
   final Map<String, dynamic>? patientData;
@@ -21,6 +23,7 @@ class ScreeningForm extends StatefulWidget {
 }
 
 class _ScreeningFormState extends State<ScreeningForm> {
+  final ScrollController _scrollController = ScrollController();
   final TextEditingController _chiefComplaintController =
       TextEditingController();
   final TextEditingController _medicationsController = TextEditingController();
@@ -35,6 +38,23 @@ class _ScreeningFormState extends State<ScreeningForm> {
   late List<Map<String, dynamic>> categories;
   late int _medicationRequiredBeforeDental;
   late int _smokeOrTobacco;
+
+  String get _localKey => 'screening_form_data_${widget.patientData?['id'] ?? widget.patientData?['userId'] ?? ''}';
+  String get _scrollKey => 'screening_form_scroll_offset_${widget.patientData?['id'] ?? widget.patientData?['userId'] ?? ''}';
+
+  // Utility: Recursively convert any Map with dynamic keys to Map<String, dynamic> or List
+  dynamic deepConvertToStringKeyedMap(dynamic data) {
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(
+        key.toString(),
+        deepConvertToStringKeyedMap(value),
+      ));
+    } else if (data is List) {
+      return data.map((item) => deepConvertToStringKeyedMap(item)).toList();
+    } else {
+      return data;
+    }
+  }
 
   @override
   void initState() {
@@ -103,38 +123,117 @@ class _ScreeningFormState extends State<ScreeningForm> {
 
     // Load initial data if provided
     if (widget.initialData != null) {
-      _loadInitialData(widget.initialData!);
+      final safeData = deepConvertToStringKeyedMap(widget.initialData!);
+      _loadInitialData(safeData);
     }
+
+    _loadLocalFormData();
+    _restoreScrollPosition();
+    _scrollController.addListener(_saveScrollPosition);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_saveScrollPosition);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _loadInitialData(Map<String, dynamic> data) {
-    setState(() {
-      _chiefComplaintController.text = data['chiefComplaint'] ?? '';
-      _medicationsController.text = data['medications'] ?? '';
-      _positiveAnswersExplanationController.text =
-          data['positiveAnswersExplanation'] ?? '';
-      _preventiveAdviceController.text = data['preventiveAdvice'] ?? '';
+    _chiefComplaintController.text = data['chiefComplaint'] ?? '';
+    _medicationsController.text = data['medications'] ?? '';
+    _positiveAnswersExplanationController.text = data['positiveAnswersExplanation'] ?? '';
+    _preventiveAdviceController.text = data['preventiveAdvice'] ?? '';
 
-      if (data['medicalHistory'] != null) {
-        medicalHistory = Map<String, int>.from(data['medicalHistory']);
+    if (data['medicalHistory'] != null) {
+      final raw = data['medicalHistory'];
+      if (raw is Map<String, dynamic>) {
+        medicalHistory = raw.map((k, v) => MapEntry(k.toString(), v is int ? v : int.tryParse(v.toString()) ?? 0));
+      } else if (raw is Map) {
+        medicalHistory = Map<String, int>.fromEntries(
+          raw.entries.map((e) => MapEntry(e.key.toString(), e.value is int ? e.value : int.tryParse(e.value.toString()) ?? 0)),
+        );
       }
-
-      if (data['healthProblems'] != null) {
-        healthProblems = Map<String, bool>.from(data['healthProblems']);
+    }
+    if (data['healthProblems'] != null) {
+      final raw = data['healthProblems'];
+      if (raw is Map<String, dynamic>) {
+        healthProblems = raw.map((k, v) => MapEntry(k.toString(), v == true));
+      } else if (raw is Map) {
+        healthProblems = Map<String, bool>.fromEntries(
+          raw.entries.map((e) => MapEntry(e.key.toString(), e.value == true)),
+        );
       }
-
-      if (data['dentalHistory'] != null) {
-        dentalHistory = Map<String, int>.from(data['dentalHistory']);
+    }
+    if (data['dentalHistory'] != null) {
+      final raw = data['dentalHistory'];
+      if (raw is Map<String, dynamic>) {
+        dentalHistory = raw.map((k, v) => MapEntry(k.toString(), v is int ? v : int.tryParse(v.toString()) ?? 0));
+      } else if (raw is Map) {
+        dentalHistory = Map<String, int>.fromEntries(
+          raw.entries.map((e) => MapEntry(e.key.toString(), e.value is int ? e.value : int.tryParse(e.value.toString()) ?? 0)),
+        );
       }
-
-      if (data['categories'] != null) {
-        categories = List<Map<String, dynamic>>.from(data['categories']);
+    }
+    if (data['categories'] != null) {
+      final raw = data['categories'];
+      if (raw is List) {
+        categories = raw.map((e) {
+          if (e is Map<String, dynamic>) {
+            return Map<String, dynamic>.fromEntries(
+              e.entries.map((kv) => MapEntry(kv.key.toString(), kv.value)),
+            );
+          } else if (e is Map) {
+            return Map<String, dynamic>.fromEntries(
+              e.entries.map((kv) => MapEntry(kv.key.toString(), kv.value)),
+            );
+          } else {
+            return <String, dynamic>{};
+          }
+        }).toList();
       }
+    }
+    _medicationRequiredBeforeDental = data['medicationRequiredBeforeDental'] ?? 0;
+    _smokeOrTobacco = data['smokeOrTobacco'] ?? 0;
+  }
 
-      _medicationRequiredBeforeDental =
-          data['medicationRequiredBeforeDental'] ?? 0;
-      _smokeOrTobacco = data['smokeOrTobacco'] ?? 0;
-    });
+  @override
+  void didUpdateWidget(covariant ScreeningForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialData != oldWidget.initialData && widget.initialData != null) {
+      final safeData = deepConvertToStringKeyedMap(widget.initialData!);
+      _loadInitialData(safeData);
+      setState(() {}); // لإعادة بناء الواجهة إذا لزم الأمر
+    }
+  }
+
+  Future<void> _loadLocalFormData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedData = prefs.getString(_localKey);
+    if (savedData != null) {
+      final Map<String, dynamic> data = Map<String, dynamic>.from(
+        (savedData.isNotEmpty) ? Map<String, dynamic>.from(await _decodeJson(savedData)) : {},
+      );
+      _loadInitialData(data);
+    }
+  }
+
+  Future<void> _saveLocalFormData(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_localKey, await _encodeJson(data));
+  }
+
+  Future<String> _encodeJson(Map<String, dynamic> data) async {
+    return jsonEncode(data);
+  }
+
+  Future<Map<String, dynamic>> _decodeJson(String data) async {
+    return Map<String, dynamic>.from(jsonDecode(data));
+  }
+
+  void _onFormChanged() {
+    final formData = _collectFormData();
+    _saveLocalFormData(formData);
   }
 
   Map<String, dynamic> _collectFormData() {
@@ -162,13 +261,20 @@ class _ScreeningFormState extends State<ScreeningForm> {
     final p = widget.patientData;
     if (p == null) return const SizedBox.shrink();
 
+    // دعم grandFatherName وgrandfatherName
+    final firstName = (p['firstName'] ?? '').toString().trim();
+    final fatherName = (p['fatherName'] ?? '').toString().trim();
+    final grandFatherName = (p['grandFatherName'] ?? p['grandfatherName'] ?? '').toString().trim();
+    final familyName = (p['familyName'] ?? '').toString().trim();
+    final fullName = [firstName, fatherName, grandFatherName, familyName].join(' ').replaceAll(RegExp(' +'), ' ').trim();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (p['firstName'] != null && p['familyName'] != null)
+            if (fullName.isNotEmpty)
               RichText(
                 text: TextSpan(
                   style: DefaultTextStyle.of(context).style,
@@ -177,7 +283,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                       text: 'اسم المريض: ',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    TextSpan(text: '${p['firstName']} ${p['familyName']}'),
+                    TextSpan(text: fullName),
                   ],
                 ),
               ),
@@ -248,8 +354,10 @@ class _ScreeningFormState extends State<ScreeningForm> {
 
   void _submitForm() async {
     final formData = _collectFormData();
+    await _saveLocalFormData(formData);
     if (widget.onSave != null) {
       widget.onSave!(formData);
+      await _clearLocalData(); // حذف الحفظ المحلي بعد الحفظ النهائي
     }
     // لا ترسل إلى قاعدة البيانات هنا، سيتم الإرسال من الصفحة الأم فقط
     ScaffoldMessenger.of(context).showSnackBar(
@@ -257,9 +365,31 @@ class _ScreeningFormState extends State<ScreeningForm> {
     );
   }
 
+  Future<void> _clearLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_localKey);
+    await prefs.remove(_scrollKey);
+  }
+
+  Future<void> _saveScrollPosition() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_scrollKey, _scrollController.offset);
+  }
+
+  Future<void> _restoreScrollPosition() async {
+    final prefs = await SharedPreferences.getInstance();
+    final offset = prefs.getDouble(_scrollKey) ?? 0.0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(offset);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
@@ -272,6 +402,9 @@ class _ScreeningFormState extends State<ScreeningForm> {
                 hintText: 'Enter chief complaint...',
               ),
               maxLines: 3,
+              onChanged: (value) {
+                _onFormChanged();
+              },
             ),
           ]),
           _buildSection('Medical History', [
@@ -289,6 +422,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                             onChanged: (value) {
                               setState(() {
                                 medicalHistory[entry.key] = value!;
+                                _onFormChanged();
                               });
                             },
                           ),
@@ -301,6 +435,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                             onChanged: (value) {
                               setState(() {
                                 medicalHistory[entry.key] = value!;
+                                _onFormChanged();
                               });
                             },
                           ),
@@ -317,6 +452,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                   onChanged: (value) {
                     setState(() {
                       healthProblems[entry.key] = value!;
+                      _onFormChanged();
                     });
                   },
                 )),
@@ -329,6 +465,9 @@ class _ScreeningFormState extends State<ScreeningForm> {
                 hintText: 'Explain any positive answers...',
               ),
               maxLines: 3,
+              onChanged: (value) {
+                _onFormChanged();
+              },
             ),
           ]),
           _buildSection('List any Medications you are Currently Taking', [
@@ -339,6 +478,9 @@ class _ScreeningFormState extends State<ScreeningForm> {
                 hintText: 'List your current medications...',
               ),
               maxLines: 3,
+              onChanged: (value) {
+                _onFormChanged();
+              },
             ),
           ]),
           _buildSection(
@@ -354,6 +496,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                         onChanged: (value) {
                           setState(() {
                             _medicationRequiredBeforeDental = value!;
+                            _onFormChanged();
                           });
                         },
                       ),
@@ -366,6 +509,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                         onChanged: (value) {
                           setState(() {
                             _medicationRequiredBeforeDental = value!;
+                            _onFormChanged();
                           });
                         },
                       ),
@@ -384,6 +528,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                     onChanged: (value) {
                       setState(() {
                         _smokeOrTobacco = value!;
+                        _onFormChanged();
                       });
                     },
                   ),
@@ -396,6 +541,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                     onChanged: (value) {
                       setState(() {
                         _smokeOrTobacco = value!;
+                        _onFormChanged();
                       });
                     },
                   ),
@@ -418,6 +564,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                             onChanged: (value) {
                               setState(() {
                                 dentalHistory[entry.key] = value!;
+                                _onFormChanged();
                               });
                             },
                           ),
@@ -430,6 +577,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                             onChanged: (value) {
                               setState(() {
                                 dentalHistory[entry.key] = value!;
+                                _onFormChanged();
                               });
                             },
                           ),
@@ -455,6 +603,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
                                   onChanged: (value) {
                                     setState(() {
                                       category['score'] = value!;
+                                      _onFormChanged();
                                     });
                                   },
                                 ),
@@ -487,6 +636,9 @@ class _ScreeningFormState extends State<ScreeningForm> {
                 hintText: 'Enter preventive advice...',
               ),
               maxLines: 3,
+              onChanged: (value) {
+                _onFormChanged();
+              },
             ),
           ]),
           const SizedBox(height: 20),
