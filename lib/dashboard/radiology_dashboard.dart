@@ -75,6 +75,13 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
   @override
   void initState() {
     super.initState();
+    // Set language to English when entering radiology dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+      if (!languageProvider.isEnglish) {
+        languageProvider.toggleLanguage();
+      }
+    });
     _waitingListRef = FirebaseDatabase.instance.ref('radiology_waiting_list');
     _xrayWaitingListRef = FirebaseDatabase.instance.ref('xray_waiting_list');
     _loadUserData();
@@ -274,7 +281,8 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
   ) {
     final width = MediaQuery.of(context).size.width;
     final isSmallScreen = width < 350;
-    final isTablet = width >= 600;
+    final isTablet = width >= 600 && width <= 900;
+    final isWide = width > 900;
 
     return Material(
       borderRadius: BorderRadius.circular(15),
@@ -298,17 +306,21 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                 ),
                 child: Icon(
                   icon,
-                  size: isSmallScreen ? 24 : (isTablet ? 40 : 30),
+                  size: isSmallScreen
+                      ? 24
+                      : (isWide ? 40 : (isTablet ? 40 : 30)),
                   color: color,
                 ),
               ),
-              SizedBox(height: isTablet ? 16 : 8),
+              SizedBox(height: isWide ? 16 : (isTablet ? 16 : 8)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : (isTablet ? 18 : 16),
+                    fontSize: isSmallScreen
+                        ? 14
+                        : (isWide ? 18 : (isTablet ? 18 : 16)),
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),

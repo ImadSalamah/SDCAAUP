@@ -106,6 +106,8 @@ class MyApp extends StatelessWidget {
     final languageProvider = Provider.of<LanguageProvider>(context);
 
     return MaterialApp(
+
+  title: 'DC_AAUP',
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
       routes: {

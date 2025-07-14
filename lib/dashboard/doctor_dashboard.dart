@@ -76,6 +76,10 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
 
   @override
   void initState() {
+    // Set default language to English on page open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<LanguageProvider>(context, listen: false).setLocale(const Locale('en'));
+    });
     super.initState();
     _initializeSupervisorReference();
     _setupRealtimeListener();
@@ -140,7 +144,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
 
     setState(() {
       _supervisorName = fullName.isNotEmpty
-          ? _isArabic(context) ? "د. $fullName" : "Dr. $fullName"
+          ? _isArabic(context) ? "د. $fullName" : "د. $fullName"
           : _translate(context, 'supervisor');
       _supervisorImageUrl =
           imageData.isNotEmpty ? 'data:image/jpeg;base64,$imageData' : '';

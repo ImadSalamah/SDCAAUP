@@ -498,6 +498,7 @@ class _LoginPageState extends State<LoginPage> {
                       appBar: AppBar(
                         backgroundColor: primaryColor,
                         elevation: 0,
+                        automaticallyImplyLeading: false,
                         title: Text(
                           _translate(context, 'app_name'),
                           style: const TextStyle(
@@ -522,25 +523,26 @@ class _LoginPageState extends State<LoginPage> {
               : Scaffold(
                   backgroundColor: Colors.white,
                   appBar: AppBar(
-                    backgroundColor: primaryColor,
-                    elevation: 0,
-                    title: Text(
-                      _translate(context, 'app_name'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      backgroundColor: primaryColor,
+                      elevation: 0,
+                      automaticallyImplyLeading: false,
+                      title: Text(
+                        _translate(context, 'app_name'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.language, color: Colors.white),
+                          onPressed: () => languageProvider.toggleLanguage(),
+                        ),
+                      ],
                     ),
-                    actions: [
-                      IconButton(
-                        icon: const Icon(Icons.language, color: Colors.white),
-                        onPressed: () => languageProvider.toggleLanguage(),
-                      ),
-                    ],
-                  ),
                   body: _buildLoginBody(context, constraints, isWeb, languageProvider),
                 ),
         );
@@ -898,8 +900,8 @@ class _LoginPageState extends State<LoginPage> {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const SignUpPage()),
+                                              builder: (context) =>
+                                                  const SignUpPage()),
                                           );
                                         },
                                         child: Text(

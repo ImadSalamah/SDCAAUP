@@ -21,6 +21,93 @@ class SecretaryDashboard extends StatefulWidget {
 }
 
 class _SecretaryDashboardState extends State<SecretaryDashboard> {
+  Widget _buildFeatureBox(
+    BuildContext context,
+    IconData icon,
+    String title,
+    Color color, {
+    int badgeCount = 0,
+    required VoidCallback onTap,
+  }) {
+    final width = MediaQuery.of(context).size.width;
+    final isSmallScreen = width < 350;
+    final isTablet = width >= 600 && width <= 900;
+    final isWide = width > 900;
+
+    return Material(
+      borderRadius: BorderRadius.circular(15),
+      elevation: 3,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(15),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Stack(
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isTablet ? 18 : 12),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      icon,
+                      size: isSmallScreen
+                          ? 24
+                          : (isWide ? 40 : (isTablet ? 40 : 30)),
+                      color: color,
+                    ),
+                  ),
+                  SizedBox(height: isWide ? 16 : (isTablet ? 16 : 8)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: isSmallScreen
+                            ? 14
+                            : (isWide ? 18 : (isTablet ? 18 : 16)),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      badgeCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
   final Color primaryColor = const Color(0xFF2A7A94);
   final Color accentColor = const Color(0xFF4AB8D8);
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -382,6 +469,10 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
   }
 
   Widget _buildBody(BuildContext context, {bool isLargeScreen = false}) {
+    final mediaQuery = MediaQuery.of(context);
+    final width = mediaQuery.size.width;
+    final isSmallScreen = width < 600;
+
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -398,38 +489,12 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
             Text(
               _getErrorMessage(),
               style: const TextStyle(fontSize: 18),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _loadData();
-                _setupRealtimeListener();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: Text(
-                _translate(context, 'retry'),
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            if (_retryCount > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  '($_retryCount/$_maxRetries)',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ),
           ],
         ),
       );
     }
-
-    final mediaQuery = MediaQuery.of(context);
-    final isSmallScreen = mediaQuery.size.width < 350;
 
     return Stack(
       children: [
@@ -441,12 +506,12 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
         SafeArea(
           child: SingleChildScrollView(
             padding: EdgeInsets.only(
-              bottom: mediaQuery.padding.bottom + 80, // Increased padding for bottom nav
+              bottom: mediaQuery.padding.bottom + 80,
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Prevent overflow
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // User info section
+                // ...existing user info code...
                 Container(
                   margin: const EdgeInsets.all(20),
                   height: isSmallScreen ? 180 : 200,
@@ -481,8 +546,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                                 ? CircleAvatar(
                                     radius: isSmallScreen ? 30 : 40,
                                     backgroundColor: Color.fromARGB(
-                                      (Colors.white.a * 255.0 * 0.8).round() &
-                                          0xff,
+                                      (Colors.white.a * 255.0 * 0.8).round() & 0xff,
                                       (Colors.white.r * 255.0).round() & 0xff,
                                       (Colors.white.g * 255.0).round() & 0xff,
                                       (Colors.white.b * 255.0).round() & 0xff,
@@ -499,8 +563,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                                 : CircleAvatar(
                                     radius: isSmallScreen ? 30 : 40,
                                     backgroundColor: Color.fromARGB(
-                                      (Colors.white.a * 255.0 * 0.8).round() &
-                                          0xff,
+                                      (Colors.white.a * 255.0 * 0.8).round() & 0xff,
                                       (Colors.white.r * 255.0).round() & 0xff,
                                       (Colors.white.g * 255.0).round() & 0xff,
                                       (Colors.white.b * 255.0).round() & 0xff,
@@ -521,7 +584,6 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
-                                // تم تصحيح تكرار البراميترز
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -541,147 +603,93 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                     ],
                   ),
                 ),
-
                 // Main feature boxes
                 Padding(
                   padding: const EdgeInsets.all(20),
-                  child: isSmallScreen
-                      ? Column(
-                          children: [
-                            _buildFeatureBox(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      // final isSmallScreen = width < 350; // لم يعد مستخدمًا
+                      final isWide = width > 900;
+                      final isTablet = width >= 600 && width <= 900;
+                      final crossAxisCount = isWide ? 4 : (isTablet ? 3 : 2);
+                      final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
+                      final features = [
+                        {
+                          'icon': Icons.folder,
+                          'title': _translate(context, 'patient_files'),
+                          'color': primaryColor,
+                          'onTap': () {
+                            Navigator.push(
                               context,
-                              Icons.folder,
-                              _translate(context, 'patient_files'),
-                              primaryColor,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => PatientFilesPage(userRole: 'secretary')),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 15),
-                            _buildFeatureBox(
+                              MaterialPageRoute(
+                                  builder: (context) => PatientFilesPage(userRole: 'secretary')),
+                            );
+                          }
+                        },
+                        {
+                          'icon': Icons.person_add,
+                          'title': _translate(context, 'add_patient'),
+                          'color': Colors.green,
+                          'onTap': () {
+                            Navigator.push(
                               context,
-                              Icons.person_add,
-                              _translate(context, 'add_patient'),
-                              Colors.green,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const AddPatientPage()),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 15),
-                            _buildFeatureBox(
+                              MaterialPageRoute(
+                                  builder: (context) => const AddPatientPage()),
+                            );
+                          }
+                        },
+                        {
+                          'icon': Icons.verified_user,
+                          'title': _translate(context, 'approve_accounts'),
+                          'color': Colors.orange,
+                          'badgeCount': pendingAccounts.length,
+                          'onTap': () {
+                            Navigator.push(
                               context,
-                              Icons.verified_user,
-                              _translate(context, 'approve_accounts'),
-                              Colors.orange,
-                              badgeCount: pendingAccounts.length,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => const AccountApprovalPage()),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 15),
-                            _buildFeatureBox(
+                              MaterialPageRoute(
+                                  builder: (context) => const AccountApprovalPage()),
+                            );
+                          }
+                        },
+                        {
+                          'icon': Icons.list_alt,
+                          'title': _translate(context, 'waiting_list'),
+                          'color': primaryColor,
+                          'onTap': () {
+                            Navigator.push(
                               context,
-                              Icons.list_alt,
-                              _translate(context, 'waiting_list'),
-                              primaryColor,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const WaitingListPage(userRole: 'secretary'),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        )
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            final crossAxisCount = isLargeScreen ? 3 : 2;
-                            final rowCount = (4 / crossAxisCount).ceil();
-                            final boxHeight = 130.0;
-                            final gridHeight = rowCount * boxHeight + (rowCount - 1) * 15;
-                            return SizedBox(
-                              height: gridHeight,
-                              child: GridView.count(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                crossAxisCount: crossAxisCount,
-                                crossAxisSpacing: 15,
-                                mainAxisSpacing: 15,
-                                childAspectRatio: 1.1,
-                                children: [
-                                  _buildFeatureBox(
-                                    context,
-                                    Icons.folder,
-                                    _translate(context, 'patient_files'),
-                                    primaryColor,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => PatientFilesPage(userRole: 'secretary')),
-                                      );
-                                    },
-                                  ),
-                                  _buildFeatureBox(
-                                    context,
-                                    Icons.person_add,
-                                    _translate(context, 'add_patient'),
-                                    Colors.green,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => const AddPatientPage()),
-                                      );
-                                    },
-                                  ),
-                                  _buildFeatureBox(
-                                    context,
-                                    Icons.verified_user,
-                                    _translate(context, 'approve_accounts'),
-                                    Colors.orange,
-                                    badgeCount: pendingAccounts.length,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (context) => const AccountApprovalPage()),
-                                      );
-                                    },
-                                  ),
-                                  _buildFeatureBox(
-                                    context,
-                                    Icons.list_alt,
-                                    _translate(context, 'waiting_list'),
-                                    primaryColor,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => const WaitingListPage(userRole: 'secretary'),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
+                              MaterialPageRoute(
+                                builder: (context) => const WaitingListPage(userRole: 'secretary'),
                               ),
                             );
-                          },
+                          }
+                        },
+                      ];
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: features.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                          childAspectRatio: gridChildAspectRatio,
                         ),
+                        itemBuilder: (context, index) {
+                          final feature = features[index];
+                          return _buildFeatureBox(
+                            context,
+                            feature['icon'] as IconData,
+                            feature['title'] as String,
+                            feature['color'] as Color,
+                            onTap: feature['onTap'] as VoidCallback,
+                            badgeCount: (feature['badgeCount'] as int?) ?? 0,
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -691,94 +699,4 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
     );
   }
 
-  Widget _buildFeatureBox(
-    BuildContext context,
-    IconData icon,
-    String title,
-    Color color, {
-    int badgeCount = 0,
-    required VoidCallback onTap,
-  }) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 350;
-
-    return Material(
-      borderRadius: BorderRadius.circular(15),
-      elevation: 3,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(15),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Stack(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(
-                        (color.a * 255.0 * 0.1).round() & 0xff,
-                        (color.r * 255.0).round() & 0xff,
-                        (color.g * 255.0).round() & 0xff,
-                        (color.b * 255.0).round() & 0xff,
-                      ),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      icon,
-                      size: isSmallScreen ? 24 : 30,
-                      color: Color.fromARGB(
-                        (primaryColor.a * 255.0 * 1.0).round() & 0xff,
-                        (primaryColor.r * 255.0).round() & 0xff,
-                        (primaryColor.g * 255.0).round() & 0xff,
-                        (primaryColor.b * 255.0).round() & 0xff,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              if (badgeCount > 0)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      badgeCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

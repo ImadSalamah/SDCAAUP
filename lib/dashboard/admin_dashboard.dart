@@ -77,6 +77,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
+    // Set language to English when entering admin dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+      if (!languageProvider.isEnglish) {
+        languageProvider.toggleLanguage();
+      }
+    });
     _initializeReferences();
     _loadAdminData();
     _loadAllUsers();
@@ -675,6 +682,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final isTablet = width >= 600 && width <= 900;
     final isWide = width > 900;
 
+    // نفس منطق doctor_dashboard
     return Material(
       borderRadius: BorderRadius.circular(15),
       elevation: 3,
@@ -697,17 +705,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 child: Icon(
                   icon,
-                  size: isSmallScreen ? 24 : (isTablet ? 40 : (isWide ? 40 : 30)),
+                  size: isSmallScreen
+                      ? 24
+                      : (isWide ? 40 : (isTablet ? 40 : 30)),
                   color: color,
                 ),
               ),
-              SizedBox(height: isTablet ? 16 : 8),
+              SizedBox(height: isWide ? 16 : (isTablet ? 16 : 8)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : (isTablet ? 18 : (isWide ? 18 : 16)),
+                    fontSize: isSmallScreen
+                        ? 14
+                        : (isWide ? 18 : (isTablet ? 18 : 16)),
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),

@@ -601,6 +601,11 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
       // احفظ الفحص مباشرة تحت examinations/{patientId} (فحص واحد فقط لكل مريض)
       await _database.child('examinations').child(patientId).set(examRecord);
 
+      // حذف بيانات الفحص المحفوظة محليًا بعد الحفظ على الداتا بيس
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('initial_exam_data');
+      await prefs.remove('initial_screening_data');
+
       // حذف المريض من قائمة الانتظار بعد الحفظ باستخدام waitingListId الصحيح
       String? waitingListId;
       if (widget.patientData != null && widget.patientData!['id'] != null && widget.patientData!['id'].toString().isNotEmpty) {

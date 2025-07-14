@@ -65,6 +65,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void initState() {
     super.initState();
+    // Set language to English when entering student dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+      if (!languageProvider.isEnglish) {
+        languageProvider.toggleLanguage();
+      }
+    });
     _initializeReferences();
     _setupRealtimeListener();
     _loadData();
@@ -802,7 +809,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
     int badgeCount = 0,
     required VoidCallback onTap,
   }) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 350;
+    final width = MediaQuery.of(context).size.width;
+    final isSmallScreen = width < 350;
+    final isTablet = width >= 600 && width <= 900;
+    final isWide = width > 900;
 
     return Material(
       borderRadius: BorderRadius.circular(15),
@@ -821,24 +831,28 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(isTablet ? 18 : 12),
                     decoration: BoxDecoration(
-                      color: color.withAlpha((0.1 * 255).toInt()),
+                      color: color.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       icon,
-                      size: isSmallScreen ? 24 : 30,
+                      size: isSmallScreen
+                          ? 24
+                          : (isWide ? 40 : (isTablet ? 40 : 30)),
                       color: color,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: isWide ? 16 : (isTablet ? 16 : 8)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
                       title,
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 16,
+                        fontSize: isSmallScreen
+                            ? 14
+                            : (isWide ? 18 : (isTablet ? 18 : 16)),
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
