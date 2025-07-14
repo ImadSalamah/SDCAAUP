@@ -300,6 +300,10 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
         'molarOptions': molarOptions,
       };
       await db.child('paedodonticsCases').push().set(caseData);
+      // تحديث فلاج السماح للطالب بأخذ حالة جديدة في المادة
+      if (widget.courseId != null) {
+        await db.child('student_case_flags').child(widget.courseId!).child(user.uid).set(1);
+      }
       await _loadCurrentCase();
       setState(() => isSubmitting = false);
       if (widget.onSave != null) widget.onSave!(null);

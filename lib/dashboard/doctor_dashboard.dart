@@ -15,6 +15,7 @@ import '../Doctor/prescription_page.dart';
 import '../Doctor/doctor_xray_request_page.dart';
 import '../Doctor/assign_patients_to_student_page.dart';
 
+
 class SupervisorDashboard extends StatefulWidget {
   const SupervisorDashboard({super.key});
 

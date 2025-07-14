@@ -217,6 +217,17 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       });
 
+      // إضافة الطالب إلى student_case_flags تحت المادة إذا لم يكن موجودًا
+      final studentCaseFlagsRef = _databaseRef.child('student_case_flags').child(_selectedCourseId!).child(_selectedStudent!['id']);
+      final studentFlagSnapshot = await studentCaseFlagsRef.get();
+      if (!studentFlagSnapshot.exists) {
+        await studentCaseFlagsRef.set({
+          'allowNewCase': true,
+          'studentId': _selectedStudent!['studentId'],
+          'name': _selectedStudent!['name'],
+        });
+      }
+
       if (_selectedCourseId == '080114140') {
         await _databaseRef
             .child('studentCourseProgress')

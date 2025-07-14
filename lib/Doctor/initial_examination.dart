@@ -7,6 +7,9 @@ import 'ScreeningForm.dart';
 import 'assign_patients_to_student_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'graded_case_counter.dart';
+import 'active_case_counter.dart';
+import 'pending_case_checker.dart';
 
 class InitialExamination extends StatefulWidget {
   final Map<String, dynamic>? patientData;
@@ -666,12 +669,15 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
           ),
         );
         if (selectedCourseId != null) {
-          await _assignPatientToStudentAuto(patientId, selectedCourseId);
+          final assigned = await _assignPatientToStudentAuto(context, patientId, selectedCourseId);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم توزيع المريض تلقائيًا على الطالب الأقل حالات.')),
-          );
-          Navigator.pop(context);
+          if (assigned) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تم توزيع المريض تلقائيًا على الطالب الأقل حالات.')),
+            );
+            Navigator.pop(context);
+          }
+          // إذا لم يتم التوزيع (assigned == false)، لا تغلق الصفحة ولا تظهر رسالة نجاح، فقط رسالة عدم وجود طالب متاح ستظهر من داخل الدالة
         }
       } else {
         // إذا لم يكن تلقائي (محجوز أو إلغاء)، فقط احفظ الحالة واغلق الصفحة
@@ -720,11 +726,11 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
   }
 
   // توزيع تلقائي: إيجاد الطالب الأقل حالات في المادة وإسناد المريض له
-  Future<void> _assignPatientToStudentAuto(String patientId, String subject) async {
+  Future<bool> _assignPatientToStudentAuto(BuildContext context, String patientId, String subject) async {
     // جلب جميع الشعب التي تحتوي على نفس المادة (courseId)
     final studyGroupsSnap = await FirebaseDatabase.instance.ref('studyGroups').get();
     final studyGroups = studyGroupsSnap.value as Map<dynamic, dynamic>?;
-    if (studyGroups == null) return;
+    if (studyGroups == null) return false;
     // جمع كل الطلاب في جميع الشعب التي تحتوي على نفس المادة
     final Set<String> studentIds = {};
     for (final entry in studyGroups.entries) {
@@ -736,23 +742,36 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
         }
       }
     }
-    if (studentIds.isEmpty) return;
-    // جلب عدد الحالات لكل طالب في المادة فقط
-    final studentPatientsSnap = await FirebaseDatabase.instance.ref('student_patients').get();
-    final studentPatients = studentPatientsSnap.value as Map<dynamic, dynamic>? ?? {};
+    if (studentIds.isEmpty) return false;
+
+    // جلب جميع الحالات من paedodonticsCases و surgeryCases
+    final paedoSnap = await FirebaseDatabase.instance.ref('paedodonticsCases').get();
+    final surgerySnap = await FirebaseDatabase.instance.ref('surgeryCases').get();
+    final paedoCases = paedoSnap.value as Map<dynamic, dynamic>? ?? {};
+    final surgeryCases = surgerySnap.value as Map<dynamic, dynamic>? ?? {};
+
+    // جلب allowNewCase لكل طالب في المادة
+    final allowSnap = await FirebaseDatabase.instance.ref('student_case_flags/$subject').get();
+    final allowMap = allowSnap.value as Map<dynamic, dynamic>? ?? {};
+    List<String> eligible = [];
+    for (final sid in studentIds) {
+      final flag = allowMap[sid]?.toString();
+      if (flag == '1') eligible.add(sid);
+    }
+    // إذا لم يوجد أي طالب allowNewCase=1، لا توزع الحالة وأظهر رسالة
+    if (eligible.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يوجد أي طالب متاح لاستلام حالة جديدة في هذه المادة حالياً.')),
+      );
+      return false;
+    }
+
     String? minStudentId;
     int minCount = 999999;
-    for (final sid in studentIds) {
-      final assigned = studentPatients[sid] as Map<dynamic, dynamic>? ?? {};
+    for (final sid in eligible) {
       int count = 0;
-      assigned.forEach((pid, val) {
-        // إذا كان val = true (أسناد أدمن)، أو Map بنفس المادة
-        if (val == true) {
-          count++;
-        } else if (val is Map && val['subject'] != null && val['subject'].toString() == subject) {
-          count++;
-        }
-      });
+      count += countActiveCasesForStudentInCourse(paedoCases, sid, subject);
+      count += countActiveCasesForStudentInCourse(surgeryCases, sid, subject);
       if (count < minCount) {
         minCount = count;
         minStudentId = sid;
@@ -761,7 +780,11 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
     if (minStudentId != null) {
       // إسناد المريض لهذا الطالب بقيمة true فقط (بدون تفاصيل)
       await FirebaseDatabase.instance.ref('student_patients').child(minStudentId).child(patientId).set(true);
+      // ضبط allowNewCase=0 لهذا الطالب في هذه المادة
+      await FirebaseDatabase.instance.ref('student_case_flags/$subject/$minStudentId').set(0);
+      return true;
     }
+    return false;
   }
 // نهاية كلاس _InitialExaminationState
 
