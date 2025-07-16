@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -59,7 +61,6 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
         final TextEditingController phoneController = TextEditingController(text: userData['phone'] ?? '');
         final TextEditingController addressController = TextEditingController(text: userData['address'] ?? '');
         final TextEditingController emailController = TextEditingController(text: userData['email'] ?? '');
-        final TextEditingController imageController = TextEditingController(text: userData['image'] ?? '');
         return Scaffold(
           backgroundColor: Colors.white,
           body: Center(
@@ -354,6 +355,7 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
                             };
                             await dbRef.child('pendingUsers/$uid').update(updatedData);
                             setState(() { _isUploading = false; });
+                            // ignore: use_build_context_synchronously
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('تم حفظ التعديلات بنجاح')),
                             );

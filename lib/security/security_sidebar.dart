@@ -13,12 +13,12 @@ class SecuritySidebar extends StatelessWidget {
   final String? userImageUrl;
 
   const SecuritySidebar({
-    Key? key,
+    super.key,
     this.onItemSelected,
     this.selectedIndex = 0,
     this.userName,
     this.userImageUrl,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +46,8 @@ class SecuritySidebar extends StatelessWidget {
       child: Column(
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A7A94),
+            decoration: const BoxDecoration(
+              color: Color(0xFF2A7A94),
             ),
             child: Center(
               child: Column(
@@ -67,7 +67,7 @@ class SecuritySidebar extends StatelessWidget {
                       ),
                     )
                   else
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 32,
                       backgroundColor: Colors.white,
                       child: Icon(Icons.person, size: 40, color: Color(0xFF2A7A94)),

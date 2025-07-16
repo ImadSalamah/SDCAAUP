@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,8 +10,6 @@ import '../Doctor/initial_examination.dart';
 import '../Doctor/doctor_sidebar.dart';
 import '../Secretry/secretary_sidebar.dart';
 import 'dart:async';
-import 'dart:typed_data';
-import 'dart:convert';
 
 class WaitingListPage extends StatefulWidget {
   final String userRole;

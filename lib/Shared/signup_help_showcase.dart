@@ -9,13 +9,13 @@ class SignUpHelpShowcase extends StatefulWidget {
   final VoidCallback? onStartShowcase;
 
   const SignUpHelpShowcase({
-    Key? key,
+    super.key,
     required this.showcaseKeys,
     required this.child,
     this.autoStart = false,
     this.onStepScroll,
     this.onStartShowcase,
-  }) : super(key: key);
+  });
 
   @override
   State<SignUpHelpShowcase> createState() => _SignUpHelpShowcaseState();

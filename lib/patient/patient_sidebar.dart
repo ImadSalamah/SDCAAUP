@@ -1,7 +1,8 @@
+// ignore_for_file: use_super_parameters
+
 import 'package:flutter/material.dart';
 import '../providers/language_provider.dart';
 import 'package:provider/provider.dart';
-import '../loginpage.dart';
 import 'dart:convert';
 import '../providers/patient_provider.dart';
 
@@ -20,7 +21,7 @@ class PatientSidebar extends StatelessWidget {
     final patientProvider = Provider.of<PatientProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final isArabic = languageProvider.currentLocale.languageCode == 'ar';
-    final primaryColor = const Color(0xFF2A7A94);
+    const primaryColor = Color(0xFF2A7A94);
     final patientName = patientProvider.fullName;
     final patientImageUrl = patientProvider.imageBase64;
 
@@ -31,7 +32,7 @@ class PatientSidebar extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: primaryColor),
+              decoration: const BoxDecoration(color: primaryColor),
               currentAccountPicture: patientImageUrl.isNotEmpty
                   ? _buildSafeAvatar(patientImageUrl)
                   : const CircleAvatar(
@@ -50,12 +51,6 @@ class PatientSidebar extends StatelessWidget {
               icon: Icons.dashboard,
               label: isArabic ? 'الرئيسية' : 'Dashboard',
               route: '/patient_dashboard',
-            ),
-            _buildSidebarItem(
-              context,
-              icon: Icons.medical_services,
-              label: isArabic ? 'السجلات الطبية' : 'Medical Records',
-              route: '/medical_records',
             ),
             _buildSidebarItem(
               context,
@@ -85,7 +80,7 @@ class PatientSidebar extends StatelessWidget {
   Widget _buildSidebarItem(BuildContext context,
       {required IconData icon, required String label, required String route}) {
     final isSelected = ModalRoute.of(context)?.settings.name == route || currentRoute == route;
-    final primaryColor = const Color(0xFF2A7A94);
+    const primaryColor = Color(0xFF2A7A94);
     return ListTile(
       leading: Icon(icon, color: isSelected ? primaryColor : null),
       title: Text(

@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +13,7 @@ import '../providers/language_provider.dart';
 import 'main.dart'; // Import for navigatorKey
 import 'PendingPatientPage.dart';
 
+// ignore: constant_identifier_names
 enum UserRole { patient, dental_student, doctor, secretary, admin, security, radiology }
 
 class LoginPage extends StatefulWidget {
@@ -155,16 +158,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _checkAutoLogin() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      final userData = await _checkUserExists(user.email!);
-      if (userData != null && mounted) {
-        final role = _determineUserRole(userData);
-        _navigateToDashboard(role);
-      }
-    }
-  }
 
   String _translate(BuildContext context, String key) {
     final languageProvider =
@@ -487,8 +480,9 @@ class _LoginPageState extends State<LoginPage> {
                           end: Alignment.bottomCenter,
                           colors: [
                             primaryColor,
-                            accentColor.withOpacity(0.7),
-                            Colors.white.withOpacity(0.7),
+                            accentColor.withAlpha(179),
+Colors.white.withAlpha(179),
+
                           ],
                         ),
                       ),

@@ -211,7 +211,8 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                         radius: isSmallScreen
                             ? 30
                             : (isWide ? 55 : (isTablet ? 45 : 40)),
-                        backgroundColor: Colors.white.withOpacity(0.8),
+                        backgroundColor: Colors.white.withAlpha(204), // لأن 0.8 * 255 = 204
+
                         child: ClipOval(
                           child: Image.memory(
                             base64Decode(_userImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
@@ -229,7 +230,7 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                         radius: isSmallScreen
                             ? 30
                             : (isWide ? 55 : (isTablet ? 45 : 40)),
-                        backgroundColor: Colors.white.withOpacity(0.8),
+                       backgroundColor: Colors.white.withAlpha(204), // لأن 0.8 * 255 = 204
                         child: Icon(
                           Icons.person,
                           size: isSmallScreen
@@ -301,7 +302,8 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
               Container(
                 padding: EdgeInsets.all(isTablet ? 18 : 12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(25), // لأن 0.1 × 255 = 25.5 تقريباً 25
+
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -339,10 +341,8 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
   Widget _buildMainFeatures(BuildContext context, String lang, Map<String, Map<String, String>> localizedStrings) {
     final mediaQuery = MediaQuery.of(context);
     final width = mediaQuery.size.width;
-    final isSmallScreen = width < 350;
     final isWide = width > 900;
     final isTablet = width >= 600 && width <= 900;
-    final crossAxisCount = isWide ? 4 : (isTablet ? 3 : 2);
     final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
 
     final features = [
@@ -477,6 +477,7 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                             'tooth': selectedTooth,
                             'status': 'done',
                           });
+                          // ignore: use_build_context_synchronously
                           Navigator.pop(context);
                           _loadWaitingPatients();
                         }
@@ -500,6 +501,186 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 700;
+        final user = _auth.currentUser;
+        if (user != null) {
+          // فحص isActive من الداتا
+          return FutureBuilder<DataSnapshot>(
+            future: FirebaseDatabase.instance.ref('users/${user.uid}').get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasData && snapshot.data != null) {
+                final data = snapshot.data!.value as Map<dynamic, dynamic>?;
+                final isActive = data != null && (data['isActive'] == true || data['isActive'] == 1);
+                if (!isActive) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.block, color: Colors.red, size: 60),
+                          SizedBox(height: 24),
+                          Text(
+                            'يرجى مراجعة إدارة عيادات الأسنان في الجامعة لتفعيل حسابك.',
+                            style: TextStyle(fontSize: 20, color: Colors.red, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              }
+              // ...existing dashboard body...
+              return Directionality(
+                textDirection: languageProvider.currentLocale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+                child: Scaffold(
+                  backgroundColor: Colors.white,
+                  appBar: AppBar(
+                    title: Text(localizedStrings['app_name']?[lang] ?? ''),
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    leading: IconButton(
+                      icon: const Icon(Icons.menu),
+                      onPressed: () {
+                        setState(() {
+                          isSidebarOpen = !isSidebarOpen;
+                        });
+                      },
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.language, color: Colors.white),
+                        onPressed: () {
+                          languageProvider.toggleLanguage();
+                        },
+                        tooltip: localizedStrings['change_language']?[lang] ?? '',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.white),
+                        onPressed: () async {
+                          await _auth.signOut();
+                          if (!mounted) return;
+                          Navigator.pushReplacement(
+                            // ignore: use_build_context_synchronously
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginPage()),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  body: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: _isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : _hasError
+                                ? const Center(child: Text('حدث خطأ أثناء تحميل البيانات'))
+                                : Center(
+                                    child: SingleChildScrollView(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isWide ? 0 : 0,
+                                          vertical: 20,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            _buildUserInfoCard(context, isSmallScreen, lang, localizedStrings),
+                                            _buildMainFeatures(context, lang, localizedStrings),
+                                            ListView.builder(
+                                              shrinkWrap: true,
+                                              physics: const NeverScrollableScrollPhysics(),
+                                              itemCount: waitingPatients.length,
+                                              itemBuilder: (context, index) {
+                                                final patient = waitingPatients[index];
+                                                return Card(
+                                                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                                                  child: ListTile(
+                                                    title: Text(patient['name'] ?? (localizedStrings['patient_name']?[lang] ?? '')),
+                                                    subtitle: Text('${localizedStrings['file_number']?[lang] ?? ''}: ${patient['fileNumber'] ?? ''}'),
+                                                    trailing: const Icon(Icons.arrow_forward_ios),
+                                                    onTap: () => _showPatientDialog(patient, lang, localizedStrings),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                      ),
+                      if (isSidebarOpen) ...[
+                        // طبقة شفافة تغطي الشاشة وتغلق السايد بار عند الضغط
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                isSidebarOpen = false;
+                              });
+                            },
+                            child: Container(
+                              color: Colors.black.withAlpha(25),
+ // طبقة شفافة
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 0,
+                          bottom: 0,
+                          right: lang == 'ar' ? 0 : null,
+                          left: lang == 'ar' ? null : 0,
+                          child: RadiologySidebar(
+                            onClose: () {
+                              setState(() {
+                                isSidebarOpen = false;
+                              });
+                            },
+                            onHome: () {
+                              setState(() {
+                                isSidebarOpen = false;
+                              });
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RadiologyDashboard(),
+                                ),
+                              );
+                            },
+                            onWaitingList: () {
+                              setState(() {
+                                isSidebarOpen = false;
+                              });
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const XrayRequestListPage(),
+                                ),
+                              );
+                            },
+                            primaryColor: primaryColor,
+                            accentColor: accentColor,
+                            userName: _userName,
+                            userImageUrl: _userImageUrl,
+                            collapsed: false,
+                            parentContext: context,
+                            lang: lang,
+                            localizedStrings: localizedStrings,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }
+        // ...existing code for the normal dashboard body if user is null...
         return Directionality(
           textDirection: languageProvider.currentLocale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
           child: Scaffold(
@@ -530,6 +711,7 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                     await _auth.signOut();
                     if (!mounted) return;
                     Navigator.pushReplacement(
+                      // ignore: use_build_context_synchronously
                       context,
                       MaterialPageRoute(builder: (context) => const LoginPage()),
                     );
@@ -558,7 +740,7 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                                       _buildMainFeatures(context, lang, localizedStrings),
                                       ListView.builder(
                                         shrinkWrap: true,
-                                        physics: NeverScrollableScrollPhysics(),
+                                        physics: const NeverScrollableScrollPhysics(),
                                         itemCount: waitingPatients.length,
                                         itemBuilder: (context, index) {
                                           final patient = waitingPatients[index];
@@ -589,7 +771,8 @@ class _RadiologyDashboardState extends State<RadiologyDashboard> {
                         });
                       },
                       child: Container(
-                        color: Colors.black.withOpacity(0.1), // طبقة شفافة
+                       color: Colors.black.withAlpha(25),
+// طبقة شفافة
                       ),
                     ),
                   ),

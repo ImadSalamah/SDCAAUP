@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,7 +14,7 @@ class SurgeryForm extends StatefulWidget {
   final Map<String, dynamic>? initialData;
 
   const SurgeryForm({
-    Key? key,
+    super.key,
     required this.groupId,
     required this.caseNumber,
     required this.patient,
@@ -20,7 +22,7 @@ class SurgeryForm extends StatefulWidget {
     this.onSave,
     this.caseType,
     this.initialData,
-  }) : super(key: key);
+  });
 
   @override
   State<SurgeryForm> createState() => _SurgeryFormState();
@@ -100,6 +102,7 @@ class _SurgeryFormState extends State<SurgeryForm> {
         'studentId': user.uid,
         'groupId': widget.groupId,
         'courseId': widget.courseId,
+        // ignore: unnecessary_type_check
         'caseNumber': widget.caseNumber is int ? widget.caseNumber : int.tryParse(widget.caseNumber.toString()),
         'caseType': widget.caseType,
         'patient': widget.patient,
@@ -190,8 +193,9 @@ class _SurgeryFormState extends State<SurgeryForm> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
+        color: statusColor.withAlpha(25),
+border: Border.all(color: statusColor.withAlpha(77)),
+
       ),
       child: Row(
         children: [
@@ -278,7 +282,7 @@ class _SurgeryFormState extends State<SurgeryForm> {
                         validator: (value) => value?.isEmpty ?? true ? 'مطلوب' : null,
                       ),
                       const SizedBox(height: 16),
-                      Text('الجنس:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text('الجنس:', style: TextStyle(fontWeight: FontWeight.bold)),
                       Row(
                         children: [
                           Expanded(
@@ -315,12 +319,12 @@ class _SurgeryFormState extends State<SurgeryForm> {
                     return Column(
                       children: [
                         const Divider(height: 32),
-                        Text('تقييم الدكتور', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        const Text('تقييم الدكتور', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _doctorMarkController,
                           keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'العلامة (من 35)',
                             border: OutlineInputBorder(),
                           ),
@@ -335,7 +339,7 @@ class _SurgeryFormState extends State<SurgeryForm> {
                         TextFormField(
                           controller: _doctorNoteController,
                           maxLines: 3,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'ملاحظات الدكتور (مطلوبة)',
                             border: OutlineInputBorder(),
                           ),
@@ -374,12 +378,12 @@ class _SurgeryFormState extends State<SurgeryForm> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (isSubmitting) ...[
-                          SizedBox(
+                          const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                         ],
                         const Text('حفظ وإرسال للطبيب', style: TextStyle(fontSize: 16)),
                       ],
@@ -393,23 +397,4 @@ class _SurgeryFormState extends State<SurgeryForm> {
     );
   }
 
-  Widget _buildPatientInfoRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
 }

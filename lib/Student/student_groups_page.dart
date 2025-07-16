@@ -48,7 +48,7 @@ class StudentGroupsPageState extends State<StudentGroupsPage> {
             .join(' ');
         setState(() {
           _studentName = fullName.isNotEmpty ? fullName : 'الطالب';
-          _studentImageUrl = data['imageUrl'] ?? null;
+          _studentImageUrl = data['imageUrl'];
         });
       }
     } catch (e) {
@@ -109,13 +109,13 @@ class StudentGroupsPageState extends State<StudentGroupsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = const Color(0xFF2A7A94);
-    final Color accentColor = const Color(0xFF4AB8D8);
+    const Color primaryColor = Color(0xFF2A7A94);
+    const Color accentColor = Color(0xFF4AB8D8);
     final isRtl = Directionality.of(context) == TextDirection.rtl;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'شعبي الدراسية' : 'My Study Groups', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'شعبي الدراسية' : 'My Study Groups', style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: primaryColor,
         centerTitle: true,
         leading: isRtl
@@ -154,11 +154,11 @@ class StudentGroupsPageState extends State<StudentGroupsPage> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   margin: const EdgeInsets.only(bottom: 16),
                   child: ListTile(
-                    leading: CircleAvatar(
+                    leading: const CircleAvatar(
                       backgroundColor: accentColor,
                       child: Icon(Icons.group, color: Colors.white),
                     ),
-                    title: Text(group['courseName'], style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor)),
+                    title: Text(group['courseName'], style: const TextStyle(fontWeight: FontWeight.bold, color: primaryColor)),
                     subtitle: Text('الشعبة ${group['groupNumber']}', style: TextStyle(color: Colors.grey[700])),
                     trailing: const Icon(Icons.arrow_forward, color: Colors.grey),
                     onTap: () => _navigateToLogbook(context, group),

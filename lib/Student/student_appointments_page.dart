@@ -1,9 +1,13 @@
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../Student/student_sidebar.dart';
 
 class StudentAppointmentsPage extends StatefulWidget {
+  const StudentAppointmentsPage({super.key});
+
   @override
   _StudentAppointmentsPageState createState() => _StudentAppointmentsPageState();
 }
@@ -20,7 +24,6 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
   List<String> allDiseases = [];
   List<String> filteredDiseases = [];
   final DatabaseReference _usersRef = FirebaseDatabase.instance.ref('users');
-  final TextEditingController _diseaseController = TextEditingController();
   String selectedPatientName = '';
   String selectedPatientUid = '';
   List<Map<String, String>> allPatients = [];
@@ -53,7 +56,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
           .join(' ');
       setState(() {
         _studentName = fullName.isNotEmpty ? fullName : 'الطالب';
-        _studentImageUrl = data['imageUrl'] ?? null;
+        _studentImageUrl = data['imageUrl'];
       });
     }
   }
@@ -101,7 +104,6 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
   Future<void> _fetchStudentAppointments() async {
     final user = _auth.currentUser;
     if (user == null) return;
-    print('Fetching appointments for studentId: ' + user.uid);
     final snapshot = await _appointmentsRef.orderByChild('studentId').equalTo(user.uid).get();
     final List<Map<String, dynamic>> loadedAppointments = [];
     if (snapshot.exists) {
@@ -114,7 +116,6 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
         }
       });
     }
-    print('Loaded appointments: ' + loadedAppointments.toString());
     loadedAppointments.sort((a, b) {
       final dateA = DateTime.parse(a['date']);
       final dateB = DateTime.parse(b['date']);
@@ -135,19 +136,6 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
     await _fetchStudentAppointments();
   }
 
-  void _sortAppointments() {
-    appointments.sort((a, b) {
-      final dateA = DateTime.parse(a['date']);
-      final dateB = DateTime.parse(b['date']);
-      if (dateA != dateB) {
-        return dateA.compareTo(dateB);
-      }
-      // إذا كان التاريخ نفسه، قارن حسب وقت البداية
-      final timeA = a['start'];
-      final timeB = b['start'];
-      return timeA.compareTo(timeB);
-    });
-  }
 
   void _addAppointment() async {
     if (selectedDate != null && startTime != null && endTime != null && selectedPatientUid.isNotEmpty) {
@@ -162,7 +150,6 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
         'patientUid': selectedPatientUid,
         'patientName': selectedPatientName,
       };
-      print('Adding appointment: ' + appointment.toString());
       await _appointmentsRef.push().set(appointment);
       await _fetchStudentAppointments();
       setState(() {
@@ -250,7 +237,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                       controller: _patientController,
                       decoration: InputDecoration(
                         labelText: Localizations.localeOf(context).languageCode == 'ar' ? 'ابحث عن اسم المريض' : 'Search for patient name',
-                        prefixIcon: Icon(Icons.search),
+                        prefixIcon: const Icon(Icons.search),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onChanged: (value) {
@@ -263,7 +250,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                     ),
                     if (selectedPatientName.isNotEmpty && filteredPatients.isNotEmpty)
                       Container(
-                        constraints: BoxConstraints(maxHeight: 150),
+                        constraints: const BoxConstraints(maxHeight: 150),
                         child: ListView(
                           shrinkWrap: true,
                           children: filteredPatients.map((p) => ListTile(
@@ -284,12 +271,12 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: Icon(Icons.calendar_today, color: Color(0xFF2A7A94)),
+                            icon: const Icon(Icons.calendar_today, color: Color(0xFF2A7A94)),
                             label: Text(
                               selectedDate == null
                                   ? (Localizations.localeOf(context).languageCode == 'ar' ? 'اختر اليوم' : 'Select day')
                                   : '${selectedDate!.year}/${selectedDate!.month}/${selectedDate!.day}',
-                              style: TextStyle(color: Color(0xFF2A7A94)),
+                              style: const TextStyle(color: Color(0xFF2A7A94)),
                             ),
                             onPressed: _pickDate,
                           ),
@@ -297,10 +284,10 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: Icon(Icons.access_time, color: Color(0xFF2A7A94)),
+                            icon: const Icon(Icons.access_time, color: Color(0xFF2A7A94)),
                             label: Text(
                               startTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'من' : 'From') : startTime!.format(context),
-                              style: TextStyle(color: Color(0xFF2A7A94)),
+                              style: const TextStyle(color: Color(0xFF2A7A94)),
                             ),
                             onPressed: () => _pickTime(true),
                           ),
@@ -308,10 +295,10 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: Icon(Icons.access_time_filled, color: Color(0xFF2A7A94)),
+                            icon: const Icon(Icons.access_time_filled, color: Color(0xFF2A7A94)),
                             label: Text(
                               endTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'إلى' : 'To') : endTime!.format(context),
-                              style: TextStyle(color: Color(0xFF2A7A94)),
+                              style: const TextStyle(color: Color(0xFF2A7A94)),
                             ),
                             onPressed: () => _pickTime(false),
                           ),
@@ -332,7 +319,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                             onPressed: _addAppointment,
                             label: Text(
                               Localizations.localeOf(context).languageCode == 'ar' ? 'إضافة الموعد' : 'Add Appointment',
-                              style: TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Colors.white),
                             ),
                           ),
                   ],
@@ -350,21 +337,20 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
             ),
             const SizedBox(height: 10),
             appointments.isEmpty
-                ? Center(child: Text('لا يوجد مواعيد'))
+                ? const Center(child: Text('لا يوجد مواعيد'))
                 : ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: appointments.length,
                     itemBuilder: (context, index) {
                       final appt = appointments[index];
-                      print('Rendering appointment: ' + appt.toString());
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         elevation: 2,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF4AB8D8),
+                          leading: const CircleAvatar(
+                            backgroundColor: Color(0xFF4AB8D8),
                             child: Icon(Icons.calendar_today, color: Colors.white),
                           ),
                           title: Text(
@@ -372,13 +358,13 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text((Localizations.localeOf(context).languageCode == 'ar' ? 'من: ' : 'From: ') + "${appt['start']}"),
-                              Text((Localizations.localeOf(context).languageCode == 'ar' ? 'إلى: ' : 'To: ') + "${appt['end']}"),
+                              Text("${Localizations.localeOf(context).languageCode == 'ar' ? 'من: ' : 'From: '}${appt['start']}"),
+                              Text("${Localizations.localeOf(context).languageCode == 'ar' ? 'إلى: ' : 'To: '}${appt['end']}"),
                               Text((Localizations.localeOf(context).languageCode == 'ar' ? 'المريض: ' : 'Patient: ') + (appt['patientName'] ?? '')),
                             ],
                           ),
                           trailing: IconButton(
-                            icon: Icon(Icons.delete, color: Colors.red),
+                            icon: const Icon(Icons.delete, color: Colors.red),
                             tooltip: 'حذف الموعد',
                             onPressed: () async {
                               final key = appt['key'];
@@ -405,7 +391,7 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'تم حذف الموعد بنجاح' : 'Appointment deleted successfully'),
-                                      duration: Duration(seconds: 2),
+                                      duration: const Duration(seconds: 2),
                                     ),
                                   );
                                 }

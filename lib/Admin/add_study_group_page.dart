@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -19,7 +20,7 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
 
   // Form fields
   String? _selectedGroupName;
-  String? _selectedDoctorId;
+  final List<String> _selectedDoctorIds = [];
   int? _requiredCases;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
@@ -34,8 +35,7 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
   // Data lists
   List<Map<String, dynamic>> _doctorsList = [];
   final List<String> _clinicsList = ['العيادة 1', 'العيادة 2', 'العيادة 3'];
-  List<Map<String, String>> _coursesList = [];
-  List<Map<String, dynamic>> _studentsForSelectedCourse = [];
+  final List<Map<String, String>> _coursesList = [];
   final List<String> _daysList = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
   bool _isLoading = false;
 
@@ -166,7 +166,7 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
 
     if (_selectedGroupName == null ||
         _selectedGroupName!.isEmpty ||
-        _selectedDoctorId == null ||
+        _selectedDoctorIds.isEmpty ||
         _requiredCases == null ||
         _startTime == null ||
         _endTime == null ||
@@ -190,13 +190,16 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
         return;
       }
 
-      final doctor =
-          _doctorsList.firstWhere((doc) => doc['id'] == _selectedDoctorId);
+      // جلب أسماء الأطباء المختارين
+      final selectedDoctors = _doctorsList
+          .where((doc) => _selectedDoctorIds.contains(doc['id']))
+          .toList();
+      final doctorNames = selectedDoctors.map((doc) => doc['name']).toList();
 
       await _databaseRef.child('studyGroups').push().set({
         'groupName': _selectedGroupName,
-        'doctorId': _selectedDoctorId,
-        'doctorName': doctor['name'],
+        'doctorIds': _selectedDoctorIds,
+        'doctorNames': doctorNames,
         'requiredCases': _requiredCases,
         'startTime':
             '${_startTime!.hour}:${_startTime!.minute.toString().padLeft(2, '0')}',
@@ -341,16 +344,22 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
 
   @override
   Widget build(BuildContext context) {
-    print('AddStudyGroupPage build called');
+    if (kDebugMode) {
+      print('AddStudyGroupPage build called');
+    }
     // Debug: طباعة محتوى قائمة المساقات
-    print('قائمة المساقات الحالية:');
+    if (kDebugMode) {
+      print('قائمة المساقات الحالية:');
+    }
     for (var course in _coursesList) {
-      print('course: ' + course.toString());
+      if (kDebugMode) {
+        print('course: $course');
+      }
     }
 
     final isLargeScreen = MediaQuery.of(context).size.width >= 900;
-    final Color primaryColor = const Color(0xFF2A7A94);
-    final Color accentColor = const Color(0xFF4AB8D8);
+    const Color primaryColor = Color(0xFF2A7A94);
+    const Color accentColor = Color(0xFF4AB8D8);
 
     // إصلاح مشكلة الدروب داون: تعيين أول مساق افتراضيًا إذا كانت القيمة الحالية غير موجودة
     if ((_selectedCourseId == null || !_coursesList.any((c) => c['id'] == _selectedCourseId)) && _coursesList.isNotEmpty) {
@@ -425,35 +434,42 @@ class AddStudyGroupPageState extends State<AddStudyGroupPage> {
                             ),
                             const SizedBox(height: 20),
 
-                            // Doctor Selection
-                            DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
-                                labelText: _translate(context, 'select_doctor'),
-                                border: const OutlineInputBorder(),
-                              ),
-                              value: _doctorsList.any((d) => d['id'] == _selectedDoctorId) ? _selectedDoctorId : null,
-                              items: _doctorsList.isEmpty
-                                  ? [
-                                      const DropdownMenuItem<String>(
-                                        value: null,
-                                        child: Text('لا يوجد أطباء متاحين'),
-                                      ),
-                                    ]
-                                  : _doctorsList.map((doctor) {
-                                      return DropdownMenuItem<String>(
-                                        value: doctor['id'],
-                                        child: Text(doctor['name']),
-                                      );
-                                    }).toList(),
-                              onChanged: _doctorsList.isEmpty ? null : (value) => setState(() => _selectedDoctorId = value),
-                              validator: (value) {
-                                if (value == null) {
-                                  return _translate(context, 'required_field');
-                                }
-                                return null;
-                              },
-                              disabledHint: const Text('لا يوجد أطباء متاحين'),
-                            ),
+    // Doctor Selection (Multiple)
+    InputDecorator(
+      decoration: InputDecoration(
+        labelText: _translate(context, 'select_doctor'),
+        border: const OutlineInputBorder(),
+      ),
+      child: _doctorsList.isEmpty
+          ? const Text('لا يوجد أطباء متاحين')
+          : Wrap(
+              spacing: 8.0,
+              children: _doctorsList.map((doctor) {
+                final isSelected = _selectedDoctorIds.contains(doctor['id']);
+                return FilterChip(
+                  label: Text(doctor['name']),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedDoctorIds.add(doctor['id']);
+                      } else {
+                        _selectedDoctorIds.remove(doctor['id']);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+    ),
+    if (_selectedDoctorIds.isEmpty)
+      Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: Text(
+          _translate(context, 'required_field'),
+          style: const TextStyle(color: Colors.red, fontSize: 12),
+        ),
+      ),
                             const SizedBox(height: 20),
 
                             // Required Cases

@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'patient_sidebar.dart';
@@ -9,7 +11,7 @@ import '../providers/patient_provider.dart';
 import 'package:provider/provider.dart';
 
 class PatientProfilePage extends StatelessWidget {
-  const PatientProfilePage({Key? key}) : super(key: key);
+  const PatientProfilePage({super.key});
 
   void _handleSidebarNavigation(BuildContext context, String route) async {
     if (ModalRoute.of(context)?.settings.name == route) return;
@@ -125,7 +127,7 @@ class PatientProfilePage extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+color: Colors.black.withAlpha(20),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),

@@ -110,8 +110,8 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final primaryColor = const Color(0xFF2A7A94);
-    final accentColor = const Color(0xFF4AB8D8);
+    const primaryColor = Color(0xFF2A7A94);
+    const accentColor = Color(0xFF4AB8D8);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primaryColor,
@@ -159,7 +159,7 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
                   decoration: BoxDecoration(
                     border: Border.all(color: accentColor, width: 2),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Colors.black12,
                         blurRadius: 8,
@@ -195,7 +195,7 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
   }
 
   List<Widget> _buildFaceBoxes(double screenWidth) {
-    final accentColor = const Color(0xFF4AB8D8);
+    const accentColor = Color(0xFF4AB8D8);
     return _detectedFaces.map((face) {
       if (!face.containsKey('top')) return const SizedBox();
       final name = face['name'] ?? '';
@@ -215,7 +215,7 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
               width: 2,
             ),
             borderRadius: BorderRadius.circular(8),
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withAlpha(25),
           ),
           child: Align(
             alignment: Alignment.topCenter,
@@ -223,8 +223,8 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
               margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
                 color: name == 'غير معروف'
-                    ? Colors.red.withOpacity(0.8)
-                    : accentColor.withOpacity(0.8),
+                    ? Colors.red.withAlpha(204)
+                    : accentColor.withAlpha(204),
                 borderRadius: BorderRadius.circular(6),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -246,7 +246,7 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
       right: 16,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.7),
+          color: Colors.black.withAlpha(180),
           borderRadius: BorderRadius.circular(8),
         ),
         padding: const EdgeInsets.all(10),

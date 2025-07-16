@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
@@ -51,8 +53,8 @@ class _UsersListPageState extends State<UsersListPage> {
   }
 
   Future<void> _loadSecretaryDataToProvider() async {
-    final user = FirebaseDatabase.instance.ref('users');
-    final auth = Provider.of<SecretaryProvider>(context, listen: false);
+    FirebaseDatabase.instance.ref('users');
+    Provider.of<SecretaryProvider>(context, listen: false);
     // يمكنك تعديل هذا الجزء حسب طريقة جلب بيانات السكرتير
     // مثال:
     // final snapshot = await user.child(auth.uid).get();
@@ -292,33 +294,6 @@ class _UsersListPageState extends State<UsersListPage> {
     }
   }
 
-  Future<void> _addToWaitingList(Map<String, dynamic> user) async {
-    try {
-      final DatabaseReference waitingListRef = FirebaseDatabase.instance.ref('waitingList');
-      final String userId = user['id'] ?? user['uid'] ?? '';
-      if (userId.isEmpty) return;
-      // أضف بيانات المريض إلى قائمة الانتظار باستخدام معرف المستخدم الحقيقي كمفتاح
-      await waitingListRef.child(userId).set({
-        'id': userId,
-        'firstName': user['firstName'] ?? '',
-        'fatherName': user['fatherName'] ?? '',
-        'grandfatherName': user['grandfatherName'] ?? '',
-        'familyName': user['familyName'] ?? '',
-        'birthDate': user['birthDate'] ?? '',
-        'phone': user['phoneNumber'] ?? user['phone'] ?? '',
-        'gender': user['gender'] ?? '',
-        'idNumber': user['idNumber'] ?? '',
-        'email': user['email'] ?? '',
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تمت إضافة المريض إلى قائمة الانتظار')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء الإضافة: $e')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

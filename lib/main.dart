@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -44,11 +44,15 @@ void main() async {
           databaseURL: "https://dcms-aaup-6e1e4-default-rtdb.firebaseio.com",
         ),
       );
-      print("✅ Firebase initialized for Web");
+      if (kDebugMode) {
+        print("✅ Firebase initialized for Web");
+      }
     } else {
       // On iOS and Android, use default config from GoogleService files
       await Firebase.initializeApp();
-      print("✅ Firebase initialized for Mobile");
+      if (kDebugMode) {
+        print("✅ Firebase initialized for Mobile");
+      }
     }
 
     // إعداد الإشعارات المحلية
@@ -69,7 +73,9 @@ void main() async {
       ),
     );
   } catch (e) {
-    print('❌ Firebase initialization error: $e');
+    if (kDebugMode) {
+      print('❌ Firebase initialization error: $e');
+    }
 
     runApp(
       MaterialApp(

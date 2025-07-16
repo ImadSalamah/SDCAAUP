@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -6,9 +8,6 @@ import '../../providers/language_provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'dart:convert';
 import 'package:provider/provider.dart';
-import '../dashboard/secretary_dashboard.dart';
-import '../Shared/patient_files.dart';
-import '../Shared/waiting_list_page.dart';
 import '../loginpage.dart';
 import '../Secretry/secretary_sidebar.dart';
 import '../../providers/secretary_provider.dart';
@@ -26,8 +25,8 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   List<Map<String, dynamic>> _pendingUsers = [];
   bool _isLoading = true;
-  String _userName = '';
-  String _userImageUrl = '';
+  final String _userName = '';
+  final String _userImageUrl = '';
   Uint8List? _userImageBytes;
 
   final _rejectionReasonController = TextEditingController();
@@ -175,7 +174,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     try {
       final userId = userData['userId']?.toString() ?? '';
       final authUid = userData['authUid']?.toString() ?? '';
-      final phone = userData['phone']?.toString() ?? '';
 
       if (userId.isEmpty || authUid.isEmpty) {
         throw Exception('Missing userId or authUid');
@@ -211,7 +209,6 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     try {
       final userId = userData['userId']?.toString() ?? '';
       final authUid = userData['authUid']?.toString() ?? '';
-      final phone = userData['phone']?.toString() ?? '';
 
       if (userId.isEmpty || authUid.isEmpty) {
         throw Exception('Missing userId or authUid');

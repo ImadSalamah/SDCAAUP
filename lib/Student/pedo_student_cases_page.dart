@@ -85,9 +85,9 @@ class _PedoStudentCasesPageState extends State<PedoStudentCasesPage> {
   }
 
   void _openForm(BuildContext context, String type) async {
-    // TODO: Replace these with actual values from your app context or selection
-    final String groupId = 'REPLACE_WITH_GROUP_ID'; // e.g., from user/group selection
-    final int caseNumber = 1; // e.g., from case selection logic
+   
+    const String groupId = 'REPLACE_WITH_GROUP_ID'; // e.g., from user/group selection
+    const int caseNumber = 1; // e.g., from case selection logic
     final Map<String, dynamic> patient = {}; // e.g., from patient selection
     final String courseId = _courseId ?? '080114140';
     await Navigator.push(
@@ -125,11 +125,11 @@ class _PedoStudentCasesPageState extends State<PedoStudentCasesPage> {
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(color: primaryColor),
-                child: Column(
+                child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.assignment, size: 48, color: Colors.white),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Text('حالات الطالب', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                   ],
                 ),
@@ -154,11 +154,11 @@ class _PedoStudentCasesPageState extends State<PedoStudentCasesPage> {
             children: [
               DrawerHeader(
                 decoration: BoxDecoration(color: primaryColor),
-                child: Column(
+                child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.assignment, size: 48, color: Colors.white),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Text('حالات الطالب', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                   ],
                 ),
@@ -184,7 +184,8 @@ class _PedoStudentCasesPageState extends State<PedoStudentCasesPage> {
                   if (isLargeScreen)
                     Container(
                       width: 250,
-                      color: primaryColor.withOpacity(0.08),
+                      color: primaryColor.withAlpha(20),
+
                       child: Column(
                         children: [
                           const SizedBox(height: 32),

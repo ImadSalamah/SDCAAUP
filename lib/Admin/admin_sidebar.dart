@@ -106,7 +106,7 @@ class AdminSidebar extends StatelessWidget {
             Navigator.pushAndRemoveUntil(
               parentContext,
               MaterialPageRoute(
-                builder: (context) => AdminDashboard(),
+                builder: (context) => const AdminDashboard(),
               ),
               (route) => false,
             );
@@ -117,8 +117,8 @@ class AdminSidebar extends StatelessWidget {
               parentContext,
               MaterialPageRoute(
                 builder: (context) => EditUserPage(
-                  user: {},
-                  usersList: [],
+                  user: const {},
+                  usersList: const [],
                   userName: userName,
                   userImageUrl: userImageUrl,
                   translate: translate,

@@ -1,4 +1,5 @@
-import 'dart:ui';
+// ignore_for_file: unused_import
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -152,8 +153,9 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
     setState(() {
       tempMedicines.clear();
     });
+    // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Prescription(s) added for patient')),
+      const SnackBar(content: Text('Prescription(s) added for patient')),
     );
   }
 
@@ -194,8 +196,8 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFF2A7A94);
-    final accentColor = const Color(0xFF4AB8D8);
+    const primaryColor = Color(0xFF2A7A94);
+    const accentColor = Color(0xFF4AB8D8);
     final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
     final isArabic = languageProvider.currentLocale.languageCode == 'ar';
     return Scaffold(
@@ -224,11 +226,11 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
                       color: Colors.black12,
                       blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
@@ -239,7 +241,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                         widget.isArabic
                             ? 'ابحث عن المريض بالاسم أو رقم الهوية:'
                             : 'Search patient by name or ID:',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontWeight: FontWeight.bold, color: Colors.blue)),
                     const SizedBox(height: 8),
                     Row(
@@ -264,7 +266,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                         IconButton(
                           icon: isSearchingPatient
                               ? const CircularProgressIndicator()
-                              : Icon(Icons.search, color: Colors.blue),
+                              : const Icon(Icons.search, color: Colors.blue),
                           onPressed: isSearchingPatient ? null : searchPatient,
                         ),
                       ],
@@ -306,11 +308,11 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                                   FocusScope.of(context).unfocus();
                                 },
                                 trailing: selectedPatientIndex == i
-                                    ? Icon(Icons.check_circle, color: Colors.blueAccent)
+                                    ? const Icon(Icons.check_circle, color: Colors.blueAccent)
                                     : null,
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     if (selectedPatientIndex != null)
@@ -318,8 +320,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           widget.isArabic
-                              ? 'المريض المختار: ' +
-                                  [
+                              ? 'المريض المختار: ${[
                                     foundPatients[selectedPatientIndex!]
                                             ['firstName'] ??
                                         '',
@@ -332,10 +333,8 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                                     foundPatients[selectedPatientIndex!]
                                             ['familyName'] ??
                                         ''
-                                  ].where((e) => e != '').join(' ') +
-                                  ' رقم الهوية: ${foundPatients[selectedPatientIndex!]['idNumber'] ?? ''}'
-                              : 'Selected: ' +
-                                  [
+                                  ].where((e) => e != '').join(' ')} رقم الهوية: ${foundPatients[selectedPatientIndex!]['idNumber'] ?? ''}'
+                              : 'Selected: ${[
                                     foundPatients[selectedPatientIndex!]
                                             ['firstName'] ??
                                         '',
@@ -348,9 +347,8 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                                     foundPatients[selectedPatientIndex!]
                                             ['familyName'] ??
                                         ''
-                                  ].where((e) => e != '').join(' ') +
-                                  ' ID: ${foundPatients[selectedPatientIndex!]['idNumber'] ?? ''}',
-                          style: TextStyle(
+                                  ].where((e) => e != '').join(' ')} ID: ${foundPatients[selectedPatientIndex!]['idNumber'] ?? ''}',
+                          style: const TextStyle(
                               fontWeight: FontWeight.bold, color: Colors.blueAccent),
                         ),
                       ),
@@ -359,7 +357,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                         widget.isArabic
                             ? 'اختر الدواء:'
                             : 'Select medicine:',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontWeight: FontWeight.bold, color: Colors.blue)),
                     const SizedBox(height: 8),
                     TextField(
@@ -423,7 +421,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                         widget.isArabic
                             ? 'متى يأخذ الدواء:'
                             : 'When to take the medicine:',
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontWeight: FontWeight.bold, color: Colors.blue)),
                     const SizedBox(height: 8),
                     TextField(
@@ -487,7 +485,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                           children: [
                             Text(
                               widget.isArabic ? 'الأدوية المضافة:' : 'Added medicines:',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent),
                             ),
                             ...tempMedicines.map((med) => Card(
                                   color: Colors.grey[100],
@@ -507,7 +505,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                   widget.isArabic
                       ? 'الوصفات المضافة:'
                       : 'Added prescriptions:',
-                  style: TextStyle(
+                  style: const TextStyle(
                       fontWeight: FontWeight.bold, color: Colors.blue)),
               const SizedBox(height: 10),
               if (prescriptions.isEmpty)
@@ -517,7 +515,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                     widget.isArabic
                         ? 'لا توجد وصفات مضافة بعد'
                         : 'No prescriptions added yet',
-                    style: TextStyle(color: Colors.grey),
+                    style: const TextStyle(color: Colors.grey),
                   ),
                 ),
               if (prescriptions.isNotEmpty)
@@ -525,7 +523,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
                   widget.isArabic
                       ? 'عدد الوصفات المضافة: ${prescriptions.length}'
                       : 'Total prescriptions added: ${prescriptions.length}',
-                  style: TextStyle(color: Colors.blueAccent),
+                  style: const TextStyle(color: Colors.blueAccent),
                 ),
               const SizedBox(height: 10),
               ...prescriptions.map((p) => Card(

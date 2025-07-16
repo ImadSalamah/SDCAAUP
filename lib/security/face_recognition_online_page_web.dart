@@ -1,10 +1,12 @@
+// ignore_for_file: unused_import
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 // Web-only imports
-// ignore: avoid_web_libraries_in_flutter
+// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
 // ignore: undefined_prefixed_name
 import 'dart:ui_web' as ui;
@@ -149,10 +151,8 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final primaryColor = const Color(0xFF2A7A94);
-    final accentColor = const Color(0xFF4AB8D8);
+    const primaryColor = Color(0xFF2A7A94);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primaryColor,
@@ -234,14 +234,15 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
               width: 2,
             ),
             borderRadius: BorderRadius.circular(8),
-            color: Colors.white.withOpacity(0.1),
+         color: Colors.white.withAlpha(25),
+
           ),
           child: Align(
             alignment: Alignment.topCenter,
             child: Container(
               margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
-                color: boxColor.withOpacity(0.8),
+color: boxColor.withAlpha(204),
                 borderRadius: BorderRadius.circular(6),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

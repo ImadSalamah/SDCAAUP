@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -106,7 +108,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 ),
                               ),
                             if (notif['read'] == false)
-                              Text('جديد', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                              const Text('جديد', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                           ],
                         ),
                         onTap: () async {

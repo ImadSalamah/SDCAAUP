@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
@@ -138,7 +140,7 @@ class _PatientAppointmentsPageState extends State<PatientAppointmentsPage> {
       String dateOnly = dateStr.contains('T') ? dateStr.split('T')[0] : (dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr);
       return dateOnly == todayStr;
     });
-    final Color primaryColor = const Color(0xFF2A7A94);
+    const Color primaryColor = Color(0xFF2A7A94);
     final locale = Localizations.localeOf(context).languageCode;
     String t(String ar, String en) => locale == 'ar' ? ar : en;
     final hasTodayLabel = t('يوجد موعد اليوم', 'You have an appointment today');

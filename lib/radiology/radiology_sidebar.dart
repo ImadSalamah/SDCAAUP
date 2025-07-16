@@ -15,7 +15,7 @@ class RadiologySidebar extends StatelessWidget {
   final Map<String, Map<String, String>> localizedStrings;
 
   const RadiologySidebar({
-    Key? key,
+    super.key,
     required this.primaryColor,
     required this.accentColor,
     required this.userName,
@@ -27,7 +27,7 @@ class RadiologySidebar extends StatelessWidget {
     this.collapsed = false,
     required this.lang,
     required this.localizedStrings,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

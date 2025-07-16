@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,13 +67,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void initState() {
     super.initState();
-    // Set language to English when entering student dashboard
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
-      if (!languageProvider.isEnglish) {
-        languageProvider.toggleLanguage();
-      }
-    });
+    // تم إزالة تعيين اللغة الافتراضية للإنجليزية عند فتح لوحة الطالب
     _initializeReferences();
     _setupRealtimeListener();
     _loadData();
@@ -244,7 +240,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           if (data['title'] != null) {
             bannerMsg = data['title'].toString();
             if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
-              bannerMsg += '\n' + data['message'].toString();
+              bannerMsg += '\n${data['message']}';
             }
           } else {
             bannerMsg = 'لديك إشعار جديد';
@@ -266,6 +262,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     return Directionality(
       textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
+      // ignore: deprecated_member_use
       child: WillPopScope(
         onWillPop: () async {
           ScaffoldMessenger.of(context).clearMaterialBanners();
@@ -404,7 +401,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.medical_services, color: Colors.green),
+                  leading: const Icon(Icons.medical_services, color: Colors.green),
                   title: Text(_translate(context, 'examine_patient')),
                   onTap: () {
                     Navigator.push(
@@ -415,13 +412,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 ),
                 // زر مواعيدي بدلاً من زر الإشعارات
                 ListTile(
-                  leading: Icon(Icons.calendar_today, color: Colors.orange),
+                  leading: const Icon(Icons.calendar_today, color: Colors.orange),
                   title: Text(_translate(context, 'my_appointments')),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => StudentAppointmentsPage(),
+                        builder: (context) => const StudentAppointmentsPage(),
                       ),
                     );
                   },
@@ -493,7 +490,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.medical_services, color: Colors.green),
+                  leading: const Icon(Icons.medical_services, color: Colors.green),
                   title: Text(_translate(context, 'examine_patient')),
                   onTap: () {
                     Navigator.push(
@@ -503,7 +500,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   },
                 ),
                 ListTile(
-                  leading: Icon(Icons.notifications, color: Colors.orange),
+                  leading: const Icon(Icons.notifications, color: Colors.orange),
                   title: Text(_translate(context, 'notifications')),
                   onTap: () {
                     _showNotificationsDialog(context);
@@ -589,6 +586,209 @@ class _StudentDashboardState extends State<StudentDashboard> {
       );
     }
 
+    // فحص حالة الحساب
+    final user = _auth.currentUser;
+    if (user != null) {
+      // سنستخدم FutureBuilder لجلب isActive مباشرة من الداتا
+      return FutureBuilder<DataSnapshot>(
+        future: _userRef.get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            final data = snapshot.data!.value as Map<dynamic, dynamic>?;
+            final isActive = data != null && (data['isActive'] == true || data['isActive'] == 1);
+            if (!isActive) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.block, color: Colors.red, size: 60),
+                      SizedBox(height: 24),
+                      Text(
+                        'يرجى مراجعة إدارة عيادات الأسنان في الجامعة لتفعيل حسابك.',
+                        style: TextStyle(fontSize: 20, color: Colors.red, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+          final mediaQuery = MediaQuery.of(context);
+          final isSmallScreen = mediaQuery.size.width < 350;
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 900;
+              final gridCount = isWide ? 4 : (constraints.maxWidth > 600 ? 3 : 2);
+              // No ConstrainedBox or Center, let it fill the screen on large displays
+              return Stack(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    padding: EdgeInsets.only(bottom: mediaQuery.padding.bottom + 20),
+                    child: Column(
+                      children: [
+                        // User info section
+                        Container(
+                          margin: const EdgeInsets.all(20),
+                          height: isSmallScreen ? 180 : 200,
+                          decoration: BoxDecoration(
+                            image: const DecorationImage(
+                              image: AssetImage('lib/assets/backgrownd.png'),
+                              fit: BoxFit.cover,
+                            ),
+                            color: const Color(0x4D000000),
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0x33000000),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                              ),
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _userImageUrl.isNotEmpty
+                                        ? CircleAvatar(
+                                            radius: isSmallScreen ? 30 : 40,
+                                            backgroundColor: Colors.white.withAlpha((0.8 * 255).toInt()),
+                                            child: ClipOval(
+                                              child: Image.memory(
+                                                base64Decode(_userImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
+                                                width: isSmallScreen ? 60 : 80,
+                                                height: isSmallScreen ? 60 : 80,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          )
+                                        : CircleAvatar(
+                                            radius: isSmallScreen ? 30 : 40,
+                                            backgroundColor: Colors.white.withAlpha((0.8 * 255).toInt()),
+                                            child: Icon(
+                                              Icons.person,
+                                              size: isSmallScreen ? 30 : 40,
+                                              color: accentColor,
+                                            ),
+                                          ),
+                                    const SizedBox(height: 15),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      child: Text(
+                                        _userName,
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen ? 16 : 20,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      _translate(context, 'student'),
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Main feature boxes
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: gridCount,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                            childAspectRatio: 1.1,
+                            children: [
+                              _buildFeatureBox(
+                                context,
+                                Icons.assignment,
+                                _translate(context, 'view_examinations'),
+                                primaryColor,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ExaminedPatientsPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildFeatureBox(
+                                context,
+                                Icons.medical_services,
+                                _translate(context, 'examine_patient'),
+                                Colors.green,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const StudentGroupsPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildFeatureBox(
+                                context,
+                                Icons.calendar_today,
+                                _translate(context, 'my_appointments'),
+                                Colors.orange,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const StudentAppointmentsPage(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    }
+
+    // ...existing code for the normal dashboard body if user is null...
     final mediaQuery = MediaQuery.of(context);
     final isSmallScreen = mediaQuery.size.width < 350;
 
@@ -730,16 +930,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
                             );
                           },
                         ),
-                        // _buildFeatureBox(
-                        //   context,
-                        //   Icons.notifications,
-                        //   _translate(context, 'notifications'),
-                        //   Colors.orange,
-                        //   badgeCount: notifications.length,
-                        //   onTap: () {
-                        //     _showNotificationsDialog(context);
-                        //   },
-                        // ),
                         _buildFeatureBox(
                           context,
                           Icons.calendar_today,
@@ -749,7 +939,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => StudentAppointmentsPage(),
+                                builder: (context) => const StudentAppointmentsPage(),
                               ),
                             );
                           },
@@ -833,7 +1023,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   Container(
                     padding: EdgeInsets.all(isTablet ? 18 : 12),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withAlpha(25),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(

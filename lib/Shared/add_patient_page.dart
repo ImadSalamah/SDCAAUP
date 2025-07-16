@@ -11,7 +11,6 @@ import '../../providers/language_provider.dart';
 import 'package:flutter/services.dart';
 import '../Secretry/secretary_sidebar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:typed_data';
 
 class AddPatientPage extends StatefulWidget {
   const AddPatientPage({super.key});
@@ -289,7 +288,7 @@ class AddPatientPageState extends State<AddPatientPage> {
       maxLength: maxLength,
       decoration: InputDecoration(
         labelText: labelText,
-        labelStyle: TextStyle(color: primaryColor.withOpacity(0.8)),
+        labelStyle: TextStyle(color: primaryColor.withAlpha(204)),
         prefixIcon: prefixIcon,
         filled: true,
         fillColor: Colors.grey[50],
@@ -317,7 +316,7 @@ class AddPatientPageState extends State<AddPatientPage> {
           child: Text(
             '${_translate('gender')} ${_translate('required_field')}',
             style: TextStyle(
-              color: primaryColor.withOpacity(0.8),
+              color: primaryColor.withAlpha(204),
               fontSize: 16,
             ),
           ),
@@ -571,7 +570,7 @@ class AddPatientPageState extends State<AddPatientPage> {
                                   labelText:
                                       '${_translate('birth_date')} ${_translate('required_field')}',
                                   labelStyle: TextStyle(
-                                      color: primaryColor.withOpacity(0.8)),
+                                      color: primaryColor.withAlpha(204)),
                                   prefixIcon: Icon(Icons.calendar_today,
                                       color: accentColor),
                                   filled: true,

@@ -92,7 +92,7 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).languageCode;
     String t(String ar, String en) => locale == 'ar' ? ar : en;
-    final Color primaryColor = const Color(0xFF2A7A94);
+    const Color primaryColor = Color(0xFF2A7A94);
     return Scaffold(
       appBar: AppBar(
         title: Text(t('الوصفات الطبية', 'Prescriptions'), style: const TextStyle(color: Colors.white)),
@@ -137,9 +137,9 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.medication, color: primaryColor, size: 22),
+                                  const Icon(Icons.medication, color: primaryColor, size: 22),
                                   const SizedBox(width: 8),
-                                  Text(t('الدواء:', 'Medicine:'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryColor)),
+                                  Text(t('الدواء:', 'Medicine:'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryColor)),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -153,7 +153,7 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  Icon(Icons.access_time, color: primaryColor, size: 20),
+                                  const Icon(Icons.access_time, color: primaryColor, size: 20),
                                   const SizedBox(width: 8),
                                   Text(t('وقت الاستخدام:', 'Usage time:'), style: const TextStyle(fontWeight: FontWeight.bold)),
                                   const SizedBox(width: 8),
@@ -165,7 +165,7 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  Icon(Icons.calendar_today, color: primaryColor, size: 20),
+                                  const Icon(Icons.calendar_today, color: primaryColor, size: 20),
                                   const SizedBox(width: 8),
                                   Text(t('تاريخ الإضافة:', 'Added on:'), style: const TextStyle(fontWeight: FontWeight.bold)),
                                   const SizedBox(width: 8),
@@ -180,7 +180,7 @@ class _PatientPrescriptionsPageState extends State<PatientPrescriptionsPage> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  Icon(Icons.person, color: primaryColor, size: 20),
+                                  const Icon(Icons.person, color: primaryColor, size: 20),
                                   const SizedBox(width: 8),
                                   Text(t('اسم الدكتور:', 'Doctor:'), style: const TextStyle(fontWeight: FontWeight.bold)),
                                   const SizedBox(width: 8),

@@ -53,7 +53,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                   Container(
                     padding: EdgeInsets.all(isTablet ? 18 : 12),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                     color: color.withAlpha(25), 
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -122,8 +122,6 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
   List<Map<String, dynamic>> pendingAccounts = [];
   bool _isLoading = true;
   bool _hasError = false;
-  final int _retryCount = 0;
-  final int _maxRetries = 3;
 
   bool hasNewNotification = false;
 
@@ -323,6 +321,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
   Future<void> _logout() async {
     await _auth.signOut();
     Navigator.pushReplacement(
+      // ignore: use_build_context_synchronously
       context,
       MaterialPageRoute(builder: (context) => const LoginPage()),
     );
@@ -359,7 +358,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
           if (data['title'] != null) {
             bannerMsg = data['title'].toString();
             if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
-              bannerMsg += '\n' + data['message'].toString();
+              bannerMsg += '\n${data['message']}';
             }
           } else {
             bannerMsg = 'لديك إشعار جديد';
@@ -382,6 +381,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
 
     return Directionality(
       textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
+      // ignore: deprecated_member_use
       child: WillPopScope(
         onWillPop: () async {
           ScaffoldMessenger.of(context).clearMaterialBanners();
@@ -401,7 +401,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
             centerTitle: true,
             leading: Builder(
               builder: (context) => IconButton(
-                icon: Icon(Icons.menu, color: Colors.white),
+                icon: const Icon(Icons.menu, color: Colors.white),
                 onPressed: () {
                   Scaffold.of(context).openDrawer();
                 },
@@ -496,6 +496,238 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
       );
     }
 
+    // فحص حالة الحساب
+    final user = _auth.currentUser;
+    if (user != null) {
+      // سنستخدم FutureBuilder لجلب isActive مباشرة من الداتا
+      return FutureBuilder<DataSnapshot>(
+        future: _userRef.get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            final data = snapshot.data!.value as Map<dynamic, dynamic>?;
+            final isActive = data != null && (data['isActive'] == true || data['isActive'] == 1);
+            if (!isActive) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.block, color: Colors.red, size: 60),
+                      SizedBox(height: 24),
+                      Text(
+                        'يرجى مراجعة إدارة عيادات الأسنان في الجامعة لتفعيل حسابك.',
+                        style: TextStyle(fontSize: 20, color: Colors.red, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+          // ...existing dashboard body...
+          return Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                ),
+              ),
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    bottom: mediaQuery.padding.bottom + 80,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ...existing user info code...
+                      Container(
+                        margin: const EdgeInsets.all(20),
+                        height: isSmallScreen ? 180 : 200,
+                        decoration: const BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage('lib/assets/backgrownd.png'),
+                            fit: BoxFit.cover,
+                          ),
+                          color: Color(0x4D000000),
+                          borderRadius: BorderRadius.all(Radius.circular(15)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0x33000000),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                            ),
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _userImageUrl.isNotEmpty && _userImageBytes != null
+                                      ? CircleAvatar(
+                                          radius: isSmallScreen ? 30 : 40,
+                                         backgroundColor: Colors.white.withAlpha(204),
+
+                                          child: ClipOval(
+                                            child: Image.memory(
+                                              _userImageBytes!,
+                                              width: isSmallScreen ? 60 : 80,
+                                              height: isSmallScreen ? 60 : 80,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        )
+                                      : CircleAvatar(
+                                          radius: isSmallScreen ? 30 : 40,
+                                       backgroundColor: Colors.white.withAlpha(204),
+
+                                          child: Icon(
+                                            Icons.person,
+                                            size: isSmallScreen ? 30 : 40,
+                                            color: accentColor,
+                                          ),
+                                        ),
+                                  const SizedBox(height: 15),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    child: Text(
+                                      _userName,
+                                      style: TextStyle(
+                                        fontSize: isSmallScreen ? 16 : 20,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    _translate(context, 'secretary'),
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 14 : 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Main feature boxes
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.maxWidth;
+                            // final isSmallScreen = width < 350; // لم يعد مستخدمًا
+                            final isWide = width > 900;
+                            final isTablet = width >= 600 && width <= 900;
+                            final crossAxisCount = isWide ? 4 : (isTablet ? 3 : 2);
+                            final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
+                            final features = [
+                              {
+                                'icon': Icons.folder,
+                                'title': _translate(context, 'patient_files'),
+                                'color': primaryColor,
+                                'onTap': () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => const PatientFilesPage(userRole: 'secretary')),
+                                  );
+                                }
+                              },
+                              {
+                                'icon': Icons.person_add,
+                                'title': _translate(context, 'add_patient'),
+                                'color': Colors.green,
+                                'onTap': () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => const AddPatientPage()),
+                                  );
+                                }
+                              },
+                              {
+                                'icon': Icons.verified_user,
+                                'title': _translate(context, 'approve_accounts'),
+                                'color': Colors.orange,
+                                'badgeCount': pendingAccounts.length,
+                                'onTap': () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => const AccountApprovalPage()),
+                                  );
+                                }
+                              },
+                              {
+                                'icon': Icons.list_alt,
+                                'title': _translate(context, 'waiting_list'),
+                                'color': primaryColor,
+                                'onTap': () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const WaitingListPage(userRole: 'secretary'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ];
+                            return GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: features.length,
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 15,
+                                mainAxisSpacing: 15,
+                                childAspectRatio: gridChildAspectRatio,
+                              ),
+                              itemBuilder: (context, index) {
+                                final feature = features[index];
+                                return _buildFeatureBox(
+                                  context,
+                                  feature['icon'] as IconData,
+                                  feature['title'] as String,
+                                  feature['color'] as Color,
+                                  onTap: feature['onTap'] as VoidCallback,
+                                  badgeCount: (feature['badgeCount'] as int?) ?? 0,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+    // ...existing code for the normal dashboard body if user is null...
     return Stack(
       children: [
         Container(
@@ -623,7 +855,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => PatientFilesPage(userRole: 'secretary')),
+                                  builder: (context) => const PatientFilesPage(userRole: 'secretary')),
                             );
                           }
                         },
@@ -697,6 +929,5 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
         ),
       ],
     );
-  }
-
-}
+        }   
+    }

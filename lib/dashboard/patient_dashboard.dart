@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -237,7 +239,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
     return _translate(context, 'error_loading_data');
   }
 
-  void showDashboardBanner(String message, {Color backgroundColor = Colors.green}) {
+  void showDashboardBanner(String message, {Color backgroundColor = Colors.green, int durationSeconds = 5}) {
     ScaffoldMessenger.of(context).clearMaterialBanners();
     ScaffoldMessenger.of(context).showMaterialBanner(
       MaterialBanner(
@@ -251,6 +253,11 @@ class _PatientDashboardState extends State<PatientDashboard> {
         ],
       ),
     );
+    Future.delayed(Duration(seconds: durationSeconds), () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearMaterialBanners();
+      }
+    });
   }
 
   void _listenForNotifications() {
@@ -268,7 +275,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
           if (data['title'] != null) {
             bannerMsg = data['title'].toString();
             if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
-              bannerMsg += '\n' + data['message'].toString();
+              bannerMsg += '\n${data['message']}';
             }
           } else {
             bannerMsg = 'لديك إشعار جديد';
@@ -341,6 +348,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
 
     return Directionality(
       textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
+      // ignore: deprecated_member_use
       child: WillPopScope(
         onWillPop: () async {
           ScaffoldMessenger.of(context).clearMaterialBanners();
@@ -417,7 +425,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               return _buildBody(context);
             },
           ),
-          bottomNavigationBar: _buildBottomNavigation(context),
+          // bottomNavigationBar تمت إزالته بناءً على طلب المستخدم
         ),
       ),
     );
@@ -547,7 +555,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                                 _patientImageUrl.isNotEmpty
                                     ? CircleAvatar(
                                         radius: isSmallScreen ? 30 : 40,
-                                        backgroundColor: Colors.white.withOpacity(0.8),
+                                        backgroundColor: Colors.white.withAlpha(204),
                                         child: ClipOval(
                                           child: Image.memory(
                                             base64.decode(_patientImageUrl),
@@ -564,7 +572,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                                       )
                                     : CircleAvatar(
                                         radius: isSmallScreen ? 30 : 40,
-                                        backgroundColor: Colors.white.withOpacity(0.8),
+                                        backgroundColor: Colors.white.withAlpha(204),
                                         child: Icon(
                                           Icons.person,
                                           size: isSmallScreen ? 30 : 40,
@@ -713,7 +721,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                           _patientImageUrl.isNotEmpty
                               ? CircleAvatar(
                                   radius: isSmallScreen ? 30 : 40,
-                                  backgroundColor: Colors.white.withOpacity(0.8),
+                                  backgroundColor: Colors.white.withAlpha(204),
                                   child: ClipOval(
                                     child: Image.memory(
                                       base64.decode(_patientImageUrl),
@@ -730,7 +738,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                                 )
                               : CircleAvatar(
                                   radius: isSmallScreen ? 30 : 40,
-                                  backgroundColor: Colors.white.withOpacity(0.8),
+                                  backgroundColor: Colors.white.withAlpha(204),
                                   child: Icon(
                                     Icons.person,
                                     size: isSmallScreen ? 30 : 40,
@@ -857,7 +865,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
               Container(
                 padding: EdgeInsets.all(isTablet ? 18 : 12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(25),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -892,85 +900,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
     );
   }
 
-  Widget _buildBottomNavigation(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final isSmallScreen = mediaQuery.size.width < 350;
-    final isArabic = _isArabic(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        border:
-            Border(top: BorderSide(color: Colors.grey.shade300, width: 0.5)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 60 + mediaQuery.padding.bottom,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: mediaQuery.padding.bottom),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildBottomNavItem(
-                    context, Icons.home, 'home', isSmallScreen, isArabic),
-                _buildBottomNavItem(
-                    context, Icons.history, 'history', isSmallScreen, isArabic),
-                _buildBottomNavItem(context, Icons.settings, 'settings',
-                    isSmallScreen, isArabic),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(
-    BuildContext context,
-    IconData icon,
-    String labelKey,
-    bool isSmallScreen,
-    bool isArabic,
-  ) {
-    final text = _translate(context, labelKey);
-
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            // Handle navigation
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: isSmallScreen ? 20 : 24,
-                  color: primaryColor,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: isArabic
-                        ? (isSmallScreen ? 8 : 10)
-                        : (isSmallScreen ? 9 : 11),
-                    color: primaryColor,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   void _navigateTo(BuildContext context, String route) {
     Navigator.pushNamed(context, route);

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../dashboard/student_dashboard.dart';
-import '../notifications_page.dart';
 import 'student_appointments_page.dart';
 import 'student_groups_page.dart';
 import '../Doctor/examined_patients_page.dart';
@@ -9,7 +8,7 @@ class StudentSidebar extends StatelessWidget {
   final Color primaryColor;
   final String? studentName;
   final String? studentImageUrl;
-  const StudentSidebar({Key? key, this.primaryColor = const Color(0xFF2A7A94), this.studentName, this.studentImageUrl}) : super(key: key);
+  const StudentSidebar({super.key, this.primaryColor = const Color(0xFF2A7A94), this.studentName, this.studentImageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +32,7 @@ class StudentSidebar extends StatelessWidget {
                         child: Icon(Icons.person, size: 40, color: primaryColor),
                       ),
                 const SizedBox(height: 10),
-                Text(studentName ?? 'الطالب', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                Text(studentName ?? 'الطالب', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
           ),
@@ -65,23 +64,23 @@ class StudentSidebar extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: Icon(Icons.medical_services, color: Colors.green),
+            leading: const Icon(Icons.medical_services, color: Colors.green),
             title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'فحص المريض' : 'Examine Patient'),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => StudentGroupsPage()),
+                MaterialPageRoute(builder: (context) => const StudentGroupsPage()),
               );
             },
           ),
           // زر مواعيدي
           ListTile(
-            leading: Icon(Icons.calendar_today, color: Colors.orange),
+            leading: const Icon(Icons.calendar_today, color: Colors.orange),
             title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'مواعيدي' : 'My Appointments'),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => StudentAppointmentsPage()),
+                MaterialPageRoute(builder: (context) => const StudentAppointmentsPage()),
               );
             },
           ),

@@ -3,11 +3,10 @@ import 'package:firebase_database/firebase_database.dart';
 import 'doctor_sidebar.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
-import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class DoctorXrayRequestPage extends StatefulWidget {
-  const DoctorXrayRequestPage({Key? key}) : super(key: key);
+  const DoctorXrayRequestPage({super.key});
 
   @override
   State<DoctorXrayRequestPage> createState() => _DoctorXrayRequestPageState();
@@ -19,8 +18,6 @@ class _DoctorXrayRequestPageState extends State<DoctorXrayRequestPage> {
   String? _selectedPatientId;
   String? _selectedPatientName;
   String _xrayType = 'single';
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _searchResults = [];
 
   List<Map<String, dynamic>> foundPatients = [];
   int? selectedPatientIndex;
@@ -146,6 +143,7 @@ class _DoctorXrayRequestPageState extends State<DoctorXrayRequestPage> {
       'status': 'pending',
     };
     await ref.push().set(request);
+    // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال الطلب بنجاح')));
     setState(() {
       _selectedPatientId = null;
@@ -157,14 +155,13 @@ class _DoctorXrayRequestPageState extends State<DoctorXrayRequestPage> {
       _jaw = null;
       _side = null;
       groupTeeth.clear();
-      _searchResults = [];
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFF2A7A94);
-    final accentColor = const Color(0xFF4AB8D8);
+    const primaryColor = Color(0xFF2A7A94);
+    const accentColor = Color(0xFF4AB8D8);
     final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
     final isArabic = languageProvider.currentLocale.languageCode == 'ar';
     return Directionality(
@@ -250,14 +247,14 @@ class _DoctorXrayRequestPageState extends State<DoctorXrayRequestPage> {
                                 : null,
                           ),
                         );
-                      }).toList(),
+                      }),
                     ],
                   ),
                 if (selectedPatientIndex != null && foundPatients.isNotEmpty && selectedPatientIndex! < foundPatients.length)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      'المريض المختار: ' + _selectedPatientName! + ' رقم الهوية: ${foundPatients[selectedPatientIndex!]['idNumber'] ?? ''}',
+                      'المريض المختار: ${_selectedPatientName!} رقم الهوية: ${foundPatients[selectedPatientIndex!]['idNumber'] ?? ''}',
                       style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
                     ),
                   ),

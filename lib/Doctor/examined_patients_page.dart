@@ -1,10 +1,11 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:flutter/services.dart';
@@ -29,39 +30,13 @@ Map<String, dynamic> safeConvertMap(dynamic data) {
 class ExaminedPatientsPage extends StatefulWidget {
   final String? studentName;
   final String? studentImageUrl;
-  const ExaminedPatientsPage({Key? key, this.studentName, this.studentImageUrl}) : super(key: key);
+  const ExaminedPatientsPage({super.key, this.studentName, this.studentImageUrl});
 
   @override
   State<ExaminedPatientsPage> createState() => _ExaminedPatientsPageState();
 }
 
 class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
-  // جدول عرض نتائج التحليل (detections)
-  Widget _buildDetectionsTable(List detections) {
-    if (detections.isEmpty) {
-      return const Text('لا يوجد نتائج تحليل متوفرة', style: TextStyle(color: textSecondary));
-    }
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('السن', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('التشخيص', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('الربع', style: TextStyle(fontWeight: FontWeight.bold))),
-          DataColumn(label: Text('الثقة', style: TextStyle(fontWeight: FontWeight.bold))),
-        ],
-        rows: detections.map<DataRow>((d) {
-          final Map<String, dynamic> det = d is Map<String, dynamic> ? d : Map<String, dynamic>.from(d);
-          return DataRow(cells: [
-            DataCell(Text(det['tooth']?.toString() ?? '-')),
-            DataCell(Text(det['diagnosis']?.toString() ?? '-')),
-            DataCell(Text(det['quadrant']?.toString() ?? '-')),
-            DataCell(Text(det['confidence'] != null ? (det['confidence'] as double).toStringAsFixed(2) : '-')),
-          ]);
-        }).toList(),
-      ),
-    );
-  }
   // تعريف الألوان
   static const Color primaryColor = Color(0xFF2A7A94);
   static const Color backgroundColor = Colors.white;
@@ -70,7 +45,6 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
   static const Color textSecondary = Color(0xFF666666);
   static const Color borderColor = Color(0xFFEEEEEE);
   static const Color errorColor = Color(0xFFE53935);
-  static const Color successColor = Color(0xFF43A047);
 
   final DatabaseReference _examinationsRef =
       FirebaseDatabase.instance.ref('examinations');
@@ -200,118 +174,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     return _translations[key]?[languageProvider.isEnglish ? 'en' : 'ar'] ?? key;
   }
 
-  Future<void> _deleteOldExaminations() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
 
-      final DataSnapshot examinationsSnapshot = await _examinationsRef.get();
-      if (!examinationsSnapshot.exists) {
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final Map<String, dynamic> examinations =
-          safeConvertMap(examinationsSnapshot.value);
-      final Map<String, Map<String, dynamic>> latestExaminations = {};
-
-      // تحديد أحدث فحص لكل مريض
-      examinations.forEach((key, value) {
-        final examData = safeConvertMap(value);
-        final String? patientId = examData['patientId']?.toString();
-
-        if (patientId == null || patientId.isEmpty) return;
-
-        if (!latestExaminations.containsKey(patientId) ||
-            (examData['timestamp'] ?? 0) >
-                (latestExaminations[patientId]!['timestamp'] ?? 0)) {
-          latestExaminations[patientId] = {
-            ...examData,
-            'key': key,
-          };
-        }
-      });
-
-      // حذف الفحوصات القديمة
-      int deletedCount = 0;
-      await Future.forEach(examinations.entries, (entry) async {
-        final examData = safeConvertMap(entry.value);
-        final String? patientId = examData['patientId']?.toString();
-
-        if (patientId == null || patientId.isEmpty) return;
-
-        if (latestExaminations.containsKey(patientId)) {
-          if (latestExaminations[patientId]!['key'] != entry.key) {
-            await _examinationsRef.child(entry.key).remove();
-            deletedCount++;
-          }
-        }
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '${_translate(context, 'deleted_success')} ($deletedCount)'),
-            backgroundColor: successColor,
-          ),
-        );
-        _loadAllExaminations();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${_translate(context, 'error_loading')}: $e'),
-            backgroundColor: errorColor,
-          ),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _showDeleteConfirmationDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(_translate(context, 'delete_confirmation')),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(_translate(context, 'delete_confirmation_message')),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(_translate(context, 'back')),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                _translate(context, 'delete_old_exams'),
-                style: const TextStyle(color: errorColor),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _deleteOldExaminations();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Future<Set<String>> _getAllowedPatientsForStudent(String studentId) async {
     final ref = FirebaseDatabase.instance.ref('student_patients/$studentId');
@@ -357,11 +220,11 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             final String examKey = examEntry.key;
             final examData = safeConvertMap(examEntry.value);
             // استخدم patientId من الفحص نفسه إذا وجد، وإلا استخدم parentKey
-            final String? patientId = examData['patientId']?.toString() ?? parentKey;
+            final String patientId = examData['patientId']?.toString() ?? parentKey;
             DataSnapshot? patientSnapshot;
             Map<String, dynamic> patientData = {};
             try {
-              patientSnapshot = await _patientsRef.child(patientId ?? '').get();
+              patientSnapshot = await _patientsRef.child(patientId).get();
               if (patientSnapshot.exists) {
                 patientData = safeConvertMap(patientSnapshot.value);
                 patientData['id'] = patientId;
@@ -374,6 +237,8 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
               patientData = {'id': patientId, 'firstName': 'Unknown'};
             }
             final String? doctorId = examData['doctorId']?.toString();
+            // ignore: duplicate_ignore
+            // ignore: use_build_context_synchronously
             Map<String, dynamic> doctorData = {'name': _translate(context, 'unknown')};
             if (doctorId != null && doctorId.isNotEmpty) {
               final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
@@ -407,7 +272,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
           // debugPrint('Skip key $key: missing patientId');
           return;
         }
-        final DataSnapshot patientSnapshot = await _patientsRef.child(patientId ?? '').get();
+        final DataSnapshot patientSnapshot = await _patientsRef.child(patientId).get();
         if (!mounted) return;
         if (!patientSnapshot.exists) {
           // debugPrint('Skip key $key: patientId $patientId not found in users');
@@ -571,7 +436,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             .format(DateTime.fromMillisecondsSinceEpoch(exam['timestamp']))
         : _translate(context, 'unknown');
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
@@ -657,8 +522,8 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             .format(DateTime.fromMillisecondsSinceEpoch(exam['timestamp'] as int))
         : _translate(context, 'unknown');
 
-    final Color primaryColor = const Color(0xFF2A7A94);
-    final Color accentColor = const Color(0xFF4AB8D8);
+    const Color primaryColor = Color(0xFF2A7A94);
+    const Color accentColor = Color(0xFF4AB8D8);
 
     Navigator.push(
       context,
@@ -812,16 +677,6 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
   }
 
   // دالة تولد Bullet مع اتجاه مناسب (تدعم العربي داخل LTR)
-  pw.Widget _smartBullet(String text, pw.TextStyle style) {
-    if (_isArabicText(text)) {
-      return pw.Directionality(
-        textDirection: pw.TextDirection.rtl,
-        child: pw.Bullet(text: text, style: style),
-      );
-    } else {
-      return pw.Bullet(text: text, style: style);
-    }
-  }
 
   Future<void> _exportPatientReportAsPdf(BuildContext context, Map<String, dynamic> patientExam) async {
     final patient = safeConvertMap(patientExam['patient']);
@@ -836,8 +691,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         : _translate(context, 'unknown');
     final pdf = pw.Document();
     final dentalChart = safeConvertMap(examData['dentalChart']);
-    final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
-    final isArabic = !languageProvider.isEnglish;
+    final isArabic = !Provider.of<LanguageProvider>(context, listen: false).isEnglish;
 
     // تحميل خط عربي من المسار الصحيح
     final fontData = await rootBundle.load('assets/Cairo-Regular.ttf');
@@ -969,39 +823,8 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
   }
 
   // كاش مؤقت لصور الأشعة
-  final Map<String, String?> _xrayImageCache = {};
 
   // جلب صورة الأشعة وبيانات التحليل من xray_images حسب patientId أو idNumber
-  Future<Map<String, dynamic>?> _getXrayImageAndAnalysisForPatient(String? patientId, String? idNumber) async {
-    if (patientId != null && _xrayImageCache.containsKey(patientId)) {
-      return _xrayImageCache[patientId] != null ? {'xrayImage': _xrayImageCache[patientId]} : null;
-    }
-    if (idNumber != null && _xrayImageCache.containsKey(idNumber)) {
-      return _xrayImageCache[idNumber] != null ? {'xrayImage': _xrayImageCache[idNumber]} : null;
-    }
-    final ref = FirebaseDatabase.instance.ref('xray_images');
-    final snapshot = await ref.get();
-    if (!snapshot.exists) return null;
-    final data = snapshot.value as Map<dynamic, dynamic>?;
-    if (data == null) return null;
-    for (final entry in data.entries) {
-      final value = entry.value;
-      if (value is Map<dynamic, dynamic>) {
-        final map = Map<String, dynamic>.from(value);
-        if ((patientId != null && map['patientId']?.toString() == patientId) ||
-            (idNumber != null && map['idNumber']?.toString() == idNumber)) {
-          final xrayImage = map['originalXrayImage']?.toString() ?? map['xrayImage']?.toString();
-          final analysisResult = map['analysisResultJson'];
-          if (patientId != null) _xrayImageCache[patientId] = xrayImage;
-          if (idNumber != null) _xrayImageCache[idNumber] = xrayImage;
-          return {'xrayImage': xrayImage, 'analysisResultJson': analysisResult};
-        }
-      }
-    }
-    if (patientId != null) _xrayImageCache[patientId] = null;
-    if (idNumber != null) _xrayImageCache[idNumber] = null;
-    return null;
-  }
 
   // كارد صورة الأشعة (يبحث في xray_images)
   Widget _buildXrayImageCard(Map<String, dynamic> patientExam, BuildContext context) {
@@ -1009,8 +832,8 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     final String? patientId = patient['id']?.toString();
     final String? idNumber = patient['idNumber']?.toString();
 
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _getXrayImageAndAnalysisForPatient(patientId, idNumber),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getAllXrayImagesForPatient(patientId, idNumber),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -1018,159 +841,225 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
-        final data = snapshot.data;
-        final String? xrayBase64 = data?['xrayImage'];
-        final dynamic analysisResult = data?['analysisResultJson'];
-        if (xrayBase64 == null || xrayBase64.isEmpty) {
-          return Card(
-            margin: const EdgeInsets.all(16),
+        final images = snapshot.data;
+        if (images == null || images.isEmpty) {
+          return const Card(
+            margin: EdgeInsets.all(16),
             color: cardColor,
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.image_not_supported, color: textSecondary),
-                  SizedBox(width: 12),
-                  Text(
-                    'لا توجد صورة أشعة مرفوعة',
-                    style: const TextStyle(color: textSecondary),
-                  ),
-                ],
-              ),
+              padding: EdgeInsets.all(16),
+              child: Text('لا توجد صور أشعة متوفرة', style: TextStyle(color: errorColor)),
             ),
           );
         }
-        try {
-          final bytes = base64Decode(xrayBase64);
-          // استخراج قائمة corrected_class إذا توفرت
-          List<String> correctedClasses = [];
-          if (analysisResult != null && analysisResult is Map && analysisResult['detections'] is List) {
-            correctedClasses = (analysisResult['detections'] as List)
-                .where((d) => d is Map && d['corrected_class'] != null)
-                .map<String>((d) => d['corrected_class'].toString())
-                .toList();
-          }
-          return Card(
-            margin: const EdgeInsets.all(16),
-            color: cardColor,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'صورة الأشعة',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: primaryColor,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => Dialog(
-                        backgroundColor: Colors.transparent,
-                        child: InteractiveViewer(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: Colors.white,
-                            ),
-                            padding: const EdgeInsets.all(8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.memory(
-                                bytes,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 600;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: images.map((img) {
+                final String? xrayBase64 = img['xrayImage'];
+                final dynamic analysisResult = img['analysisResultJson'];
+                final String? type = img['type']?.toString();
+                final int? timestamp = img['timestamp'] is int ? img['timestamp'] : int.tryParse(img['timestamp']?.toString() ?? '');
+                String dateStr = '';
+                if (timestamp != null && timestamp > 0) {
+                  dateStr = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.fromMillisecondsSinceEpoch(timestamp));
+                }
+                List<Widget> formattedDetections = [];
+                if (analysisResult != null && analysisResult is Map && analysisResult['detections'] is List) {
+                  for (final d in analysisResult['detections']) {
+                    if (d is Map && d['corrected_class'] != null) {
+                      String label = d['corrected_class'].toString();
+                      if (label.contains('_')) {
+                        final parts = label.split('_');
+                        for (int i = 0; i < parts.length; i++) {
+                          if (parts[i].startsWith('Q')) parts[i] = parts[i].substring(1);
+                          if (parts[i].startsWith('T')) parts[i] = parts[i].substring(1);
+                        }
+                        if (parts.length >= 2 && int.tryParse(parts[0]) != null && int.tryParse(parts[1]) != null) {
+                          label = parts[0] + parts[1];
+                          if (parts.length > 2) {
+                            label += '_${parts.sublist(2).join('_')}';
+                          }
+                        } else {
+                          label = parts.join('_');
+                        }
+                      }
+                      double? confidence;
+                      if (d['confidence'] != null) {
+                        try {
+                          confidence = double.tryParse(d['confidence'].toString());
+                        } catch (_) {}
+                      } else if (d['score'] != null) {
+                        try {
+                          confidence = double.tryParse(d['score'].toString());
+                        } catch (_) {}
+                      }
+                      Color badgeColor = Colors.grey;
+                      if (confidence != null) {
+                        if (confidence < 0.5) {
+                          badgeColor = Colors.red;
+                        } else if (confidence < 0.75) {
+                          badgeColor = Colors.amber;
+                        } else {
+                          badgeColor = Colors.green;
+                        }
+                      }
+                      String percent = confidence != null ? ' (${(confidence * 100).toStringAsFixed(0)}%)' : '';
+                      formattedDetections.add(
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            label + percent,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
+                      );
+                    }
+                  }
+                }
+                Widget imageWidget;
+                try {
+                  final bytes = base64Decode(xrayBase64 ?? '');
+                  imageWidget = GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return Dialog(
+                            backgroundColor: Colors.transparent,
+                            child: InteractiveViewer(
+                              minScale: 0.5,
+                              maxScale: 5,
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  maxWidth: isWide ? 700 : double.infinity,
+                                  maxHeight: isWide ? 700 : double.infinity,
+                                ),
+                                child: Image.memory(bytes, fit: BoxFit.contain),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    child: Container(
+                      width: isWide ? 350 : double.infinity,
+                      height: isWide ? 220 : 220,
+                      alignment: Alignment.center,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(bytes, fit: BoxFit.cover, width: isWide ? 350 : double.infinity, height: 220),
                       ),
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    width: double.infinity,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: borderColor),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.memory(
-                        bytes,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Center(
-                          child: Text('تعذر تحميل صورة الأشعة', style: const TextStyle(color: errorColor)),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // عرض نتائج التحليل بشكل منسق
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  );
+                } catch (e) {
+                  imageWidget = const Text('تعذر عرض صورة الأشعة', style: TextStyle(color: errorColor));
+                }
+                return Card(
+                  margin: const EdgeInsets.all(16),
+                  color: cardColor,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Divider(),
-                      Text(
-                        'تحليل الصورة باستخدام الذكاء الصناعي:',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: primaryColor, fontSize: 16),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: imageWidget,
                       ),
-                      if (correctedClasses.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          children: [
+                            if (type != null && type.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text('نوع الصورة: $type', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            if (dateStr.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text('وقت الإضافة: $dateStr', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (formattedDetections.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Text('لا توجد نتائج كشف من صورة الأشعة'),
+                        ),
+                      if (formattedDetections.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8, bottom: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('الأسنان المكتشفة:', style: const TextStyle(fontWeight: FontWeight.bold, color: textPrimary)),
-                              const SizedBox(height: 4),
+                              const Text('الأسنان المكتشفة من صورة الأشعة:', style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
                               Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: correctedClasses.map((c) => Chip(
-                                  label: Text(c, style: const TextStyle(color: textSecondary)),
-                                  backgroundColor: const Color(0xFFF2F2F2),
-                                )).toList(),
+                                children: formattedDetections,
                               ),
                             ],
                           ),
                         ),
-                      if (correctedClasses.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text('لا يوجد نتائج تحليل متوفرة', style: TextStyle(color: textSecondary)),
-                        ),
-                      // عرض الجدول الأصلي إذا رغبت
-                      if (analysisResult != null && analysisResult is Map && analysisResult['detections'] != null && analysisResult['detections'] is List && (analysisResult['detections'] as List).isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: _buildDetectionsTable(analysisResult['detections'] as List),
-                        ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          );
-        } catch (e) {
-          return Card(
-            margin: const EdgeInsets.all(16),
-            color: cardColor,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('تعذر عرض صورة الأشعة', style: const TextStyle(color: errorColor)),
-            ),
-          );
-        }
+                );
+              }).toList(),
+            );
+          },
+        );
       },
     );
+  }
+
+  // دالة جديدة لجلب جميع صور الأشعة للمريض
+  Future<List<Map<String, dynamic>>> _getAllXrayImagesForPatient(String? patientId, String? idNumber) async {
+    final ref = FirebaseDatabase.instance.ref('xray_images');
+    final snapshot = await ref.get();
+    if (!snapshot.exists) return [];
+    final data = snapshot.value as Map<dynamic, dynamic>?;
+    if (data == null) return [];
+    final List<Map<String, dynamic>> images = [];
+    for (final entry in data.entries) {
+      final value = entry.value;
+      if (value is Map<dynamic, dynamic>) {
+        final map = Map<String, dynamic>.from(value);
+        if ((patientId != null && map['patientId']?.toString() == patientId) ||
+            (idNumber != null && map['idNumber']?.toString() == idNumber)) {
+          images.add({
+            'xrayImage': map['originalXrayImage']?.toString() ?? map['xrayImage']?.toString(),
+            'analysisResultJson': map['analysisResultJson'],
+            'type': map['type'],
+            'timestamp': map['timestamp'],
+          });
+        }
+      }
+    }
+    // ترتيب الصور من الأحدث إلى الأقدم حسب الوقت
+    images.sort((a, b) {
+      final aTime = a['timestamp'] is int ? a['timestamp'] : int.tryParse(a['timestamp']?.toString() ?? '') ?? 0;
+      final bTime = b['timestamp'] is int ? b['timestamp'] : int.tryParse(b['timestamp']?.toString() ?? '') ?? 0;
+      return bTime.compareTo(aTime);
+    });
+    return images;
   }
 
   String _calculateAge(BuildContext context, dynamic birthDateValue) {
@@ -1238,7 +1127,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final languageProvider = Provider.of<LanguageProvider>(context);
+    // Removed unused languageProvider variable
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -1400,14 +1289,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         ));
       }
     }
-    void addOral(String label, dynamic value) {
-      if (value != null && value.toString().isNotEmpty) {
-        oral.add(Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Text('$label: ${value.toString()}'),
-        ));
-      }
-    }
+    // Removed unused addOral function
     addGeneral('Chief Complaint', screening['chiefComplaint']);
     addGeneral('Medications', screening['medications']);
     addGeneral('Positive Answers Explanation', screening['positiveAnswersExplanation']);
@@ -1440,16 +1322,24 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
 
   List<Widget> _buildDentalChartDetails(Map<String, dynamic> chart, BuildContext context) {
     final List<Widget> widgets = [];
-    if (chart['selectedTeeth'] != null && chart['selectedTeeth'] is List) {
-      widgets.add(Text('Selected Teeth: ${(chart['selectedTeeth'] as List).join(', ')}'));
-    }
-    if (chart['teethConditions'] != null && chart['teethConditions'] is Map) {
-      final conditions = safeConvertMap(chart['teethConditions']);
+    final Map<String, dynamic> conditions = (chart['teethConditions'] is Map)
+        ? safeConvertMap(chart['teethConditions'])
+        : {};
+    if (conditions.isNotEmpty) {
+      widgets.add(const Text('Teeth Conditions:'));
       conditions.forEach((tooth, disease) {
-        if (disease is String) {
+        if (disease is String && disease.isNotEmpty) {
           widgets.add(Text('Tooth $tooth - $disease'));
+        } else {
+          widgets.add(Text('Tooth $tooth - No condition'));
         }
       });
+    } else if (chart['selectedTeeth'] is List && (chart['selectedTeeth'] as List).isNotEmpty) {
+      final List selectedTeeth = chart['selectedTeeth'] as List;
+      widgets.add(Text('Selected Teeth: ${selectedTeeth.join(", ")}'));
+      for (final tooth in selectedTeeth) {
+        widgets.add(Text('Tooth $tooth - No condition'));
+      }
     }
     return widgets;
   }

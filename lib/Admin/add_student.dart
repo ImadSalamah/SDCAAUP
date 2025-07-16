@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -612,7 +614,8 @@ class _AddDentalStudentPageState extends State<AddDentalStudentPage> {
                         });
                       },
                       child: Container(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withAlpha(77),
+
                         alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
                         child: GestureDetector(
                           onTap: () {},

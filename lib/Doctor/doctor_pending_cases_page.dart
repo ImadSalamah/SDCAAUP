@@ -170,6 +170,7 @@ class _DoctorPendingCasesPageState extends State<DoctorPendingCasesPage> {
         await _approveAndMoveCase(caseData, doctorGrade);
       }
       await _loadPendingCases();
+      // ignore: use_build_context_synchronously
       Navigator.pop(context);
     }
     if (courseId == '080114140') {
@@ -197,7 +198,7 @@ class _DoctorPendingCasesPageState extends State<DoctorPendingCasesPage> {
         onSave: onSaveWithMove,
       );
     } else {
-      formPage = Scaffold(body: Center(child: Text('لا يوجد فورم لهذه المادة')));
+      formPage = const Scaffold(body: Center(child: Text('لا يوجد فورم لهذه المادة')));
     }
     Navigator.push(
       context,
@@ -209,12 +210,11 @@ class _DoctorPendingCasesPageState extends State<DoctorPendingCasesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isLargeScreen = MediaQuery.of(context).size.width >= 900;
-    final Color primaryColor = const Color(0xFF2A7A94);
-    final Color accentColor = const Color(0xFF4AB8D8);
+    const Color primaryColor = Color(0xFF2A7A94);
+    const Color accentColor = Color(0xFF4AB8D8);
     final languageProvider = Provider.of<LanguageProvider>(context);
-    void _logout() {}
-    String _translate(BuildContext context, String key) {
+    void logout() {}
+    String translate(BuildContext context, String key) {
       final translations = {
         'supervisor': {'ar': 'مشرف', 'en': 'Supervisor'},
         'home': {'ar': 'الرئيسية', 'en': 'Home'},
@@ -240,13 +240,13 @@ class _DoctorPendingCasesPageState extends State<DoctorPendingCasesPage> {
         accentColor: accentColor,
         userName: _doctorName ?? '',
         userImageUrl: _doctorImageUrl,
-        translate: _translate,
+        translate: translate,
         collapsed: false, // Always show labels (expanded)
-        onLogout: _logout,
+        onLogout: logout,
         parentContext: context,
       ),
       body: Padding(
-        padding: EdgeInsets.only(right: 0),
+        padding: const EdgeInsets.only(right: 0),
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
             : pendingCases.isEmpty

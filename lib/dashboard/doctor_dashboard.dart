@@ -72,14 +72,12 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
     'home': {'ar': 'الرئيسية', 'en': 'Home'},
     'show_sidebar': {'ar': 'إظهار القائمة', 'en': 'Show Sidebar'},
     'hide_sidebar': {'ar': 'إخفاء القائمة', 'en': 'Hide Sidebar'},
+    'assign_patients_to_students': {'ar': 'تعيين مرضى للطلاب', 'en': 'Assign Patients to Students'},
   };
 
   @override
   void initState() {
-    // Set default language to English on page open
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<LanguageProvider>(context, listen: false).setLocale(const Locale('en'));
-    });
+    // تم إزالة تعيين اللغة الافتراضية للإنجليزية عند فتح الشاشة
     super.initState();
     _initializeSupervisorReference();
     _setupRealtimeListener();
@@ -299,6 +297,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
     final isSmallScreen = mediaQuery.size.width < 350;
     final isLargeScreen = mediaQuery.size.width >= 900;
 
+    // ignore: deprecated_member_use
     return WillPopScope(
       onWillPop: () async {
         ScaffoldMessenger.of(context).clearMaterialBanners();
@@ -392,7 +391,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
             if (isLargeScreen && _isSidebarVisible)
               Directionality(
                 textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
-                child: Container(
+                child: SizedBox(
                   width: 260,
                   child: DoctorSidebar(
                     primaryColor: primaryColor,
@@ -465,12 +464,284 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
       );
     }
 
+    // فحص حالة الحساب
+    final user = _auth.currentUser;
+    if (user != null) {
+      // سنستخدم FutureBuilder لجلب isActive مباشرة من الداتا
+      return FutureBuilder<DataSnapshot>(
+        future: _supervisorRef.get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            final data = snapshot.data!.value as Map<dynamic, dynamic>?;
+            final isActive = data != null && (data['isActive'] == true || data['isActive'] == 1);
+            if (!isActive) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.block, color: Colors.red, size: 60),
+                      SizedBox(height: 24),
+                      Text(
+                        'يرجى مراجعة إدارة عيادات الأسنان في الجامعة لتفعيل حسابك.',
+                        style: TextStyle(fontSize: 20, color: Colors.red, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          // ...existing code for dashboard body...
+          final mediaQuery = MediaQuery.of(context);
+
+          final features = [
+            {
+              'icon': Icons.list_alt,
+              'title': _translate(context, 'waiting_list'),
+              'color': primaryColor,
+              'onTap': () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const WaitingListPage(userRole: 'doctor'),
+                  ),
+                );
+              }
+            },
+            {
+              'icon': Icons.school,
+              'title': _translate(context, 'students_evaluation'),
+              'color': Colors.green,
+              'onTap': () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const DoctorPendingCasesPage()),
+                );
+              }
+            },
+            {
+              'icon': Icons.group,
+              'title': _translate(context, 'supervision_groups'),
+              'color': Colors.blue,
+              'onTap': () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DoctorGroupsPage(),
+                  ),
+                );
+              }
+            },
+            {
+              'icon': Icons.check_circle,
+              'title': _translate(context, 'examined_patients'),
+              'color': Colors.teal,
+              'onTap': () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ExaminedPatientsPage(),
+                  ),
+                );
+              }
+            },
+            {
+              'icon': Icons.medical_services,
+              'title': _translate(context, 'prescription'),
+              'color': Colors.deepPurple,
+              'onTap': () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PrescriptionPage(
+                      isArabic: _isArabic(context),
+                    ),
+                  ),
+                );
+              }
+            },
+            {
+              'icon': Icons.camera_alt,
+              'title': _translate(context, 'xray_request'),
+              'color': Colors.orange,
+              'onTap': () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DoctorXrayRequestPage(),
+                  ),
+                );
+              }
+            },
+            {
+              'icon': Icons.assignment_ind,
+              'title': _translate(context, 'assign_patients_to_students'),
+              'color': Colors.indigo,
+              'onTap': () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AssignPatientsToStudentPage(),
+                  ),
+                );
+              }
+            },
+          ];
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final isSmallScreen = width < 350;
+              final isWide = width > 900;
+              final isTablet = width >= 600 && width <= 900;
+              final crossAxisCount = isWide ? 4 : (isTablet ? 3 : 2);
+              final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
+
+              return Stack(
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      bottom: mediaQuery.padding.bottom + (isSmallScreen ? 10 : 20),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.all(20),
+                          height: isSmallScreen ? 180 : (isWide ? 240 : (isTablet ? 220 : 200)),
+                          decoration: BoxDecoration(
+                            image: const DecorationImage(
+                              image: AssetImage('lib/assets/backgrownd.png'),
+                              fit: BoxFit.cover,
+                            ),
+                            color: const Color(0x4D000000),
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0x33000000),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                              ),
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _supervisorImageUrl.isNotEmpty
+                                        ? CircleAvatar(
+                                            radius: isSmallScreen
+                                                ? 30
+                                                : (isWide ? 55 : (isTablet ? 45 : 40)),
+                                            backgroundColor:
+                                                Colors.white.withAlpha(204),
+                                            child: ClipOval(
+                                              child: Image.memory(
+                                                base64Decode(_supervisorImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
+                                                width: isSmallScreen
+                                                    ? 60
+                                                    : (isWide ? 110 : (isTablet ? 90 : 80)),
+                                                height: isSmallScreen
+                                                    ? 60
+                                                    : (isWide ? 110 : (isTablet ? 90 : 80)),
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          )
+                                        : CircleAvatar(
+                                            radius: isSmallScreen
+                                                ? 30
+                                                : (isWide ? 55 : (isTablet ? 45 : 40)),
+                                            backgroundColor:
+                                                Colors.white.withAlpha(204),
+                                            child: Icon(
+                                              Icons.person,
+                                              size: isSmallScreen
+                                                  ? 30
+                                                  : (isWide ? 55 : (isTablet ? 45 : 40)),
+                                              color: accentColor,
+                                            ),
+                                          ),
+                                    SizedBox(height: isWide ? 30 : (isTablet ? 25 : 15)),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      child: Text(
+                                        _supervisorName,
+                                        style: TextStyle(
+                                          fontSize: isSmallScreen
+                                              ? 16
+                                              : (isWide ? 28 : (isTablet ? 22 : 20)),
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: features.length,
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: 15,
+                              mainAxisSpacing: 15,
+                              childAspectRatio: gridChildAspectRatio,
+                            ),
+                            itemBuilder: (context, index) {
+                              final feature = features[index];
+                              return _buildFeatureBox(
+                                context,
+                                feature['icon'] as IconData,
+                                feature['title'] as String,
+                                feature['color'] as Color,
+                                feature['onTap'] as VoidCallback,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    }
+
+    // ...existing code for the normal dashboard body if user is null...
     final mediaQuery = MediaQuery.of(context);
-    final isSmallScreen = mediaQuery.size.width < 350;
-    final isWide = mediaQuery.size.width > 900;
-    final isTablet = mediaQuery.size.width >= 600 && mediaQuery.size.width <= 900;
-    final crossAxisCount = isWide ? 4 : (isTablet ? 3 : 2);
-    final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
 
     final features = [
       {
@@ -554,7 +825,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
       },
       {
         'icon': Icons.assignment_ind,
-        'title': 'تعيين مرضى للطلاب',
+        'title': _translate(context, 'assign_patients_to_students'),
         'color': Colors.indigo,
         'onTap': () {
           Navigator.push(
@@ -625,7 +896,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                                           ? 30
                                           : (isWide ? 55 : (isTablet ? 45 : 40)),
                                       backgroundColor:
-                                          Colors.white.withOpacity(0.8),
+                                          Colors.white.withAlpha(204),
                                       child: ClipOval(
                                         child: Image.memory(
                                           base64Decode(_supervisorImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
@@ -644,7 +915,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                                           ? 30
                                           : (isWide ? 55 : (isTablet ? 45 : 40)),
                                       backgroundColor:
-                                          Colors.white.withOpacity(0.8),
+                                          Colors.white.withAlpha(204),
                                       child: Icon(
                                         Icons.person,
                                         size: isSmallScreen
@@ -737,7 +1008,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
               Container(
                 padding: EdgeInsets.all(isTablet ? 18 : 12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(25),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -772,7 +1043,4 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
     );
   }
 
-  void _navigateTo(BuildContext context, String route) {
-    Navigator.pushNamed(context, route);
-  }
 }

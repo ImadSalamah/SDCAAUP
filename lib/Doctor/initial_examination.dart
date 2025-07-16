@@ -1,15 +1,14 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:xml/xml.dart';
 import 'svg.dart';
 import 'ScreeningForm.dart';
-import 'assign_patients_to_student_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'graded_case_counter.dart';
 import 'active_case_counter.dart';
-import 'pending_case_checker.dart';
 
 class InitialExamination extends StatefulWidget {
   final Map<String, dynamic>? patientData;
@@ -391,8 +390,9 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
         _examData['dentalChart'] = Map<String, dynamic>.from(_examData['dentalChart'] as Map);
       }
       final Map<String, dynamic> dentalChart = _examData['dentalChart'] as Map<String, dynamic>;
+      // حفظ جميع الأسنان المحددة
       dentalChart['selectedTeeth'] = selectedTeeth;
-      // حفظ اسم المرض بدلًا من اللون
+      // حفظ اسم المرض فقط للأسنان التي تم تحديد حالة لها
       final diseaseColorMap = {
         '1976d2': 'Mobile Tooth',
         'd32f2f': 'Unrestorable Tooth',
@@ -406,11 +406,16 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
         'ff7043': 'Crown',
         '43a047': 'Implant',
       };
-      dentalChart['teethConditions'] = _teethColors.map((key, value) {
-        final hex = value.value.toRadixString(16).padLeft(8, '0').substring(2); // remove alpha
-        final disease = diseaseColorMap[hex] ?? hex;
-        return MapEntry(key, disease);
+      final Map<String, String> teethConditions = {};
+      _teethColors.forEach((tooth, value) {
+        if (selectedTeeth.contains(tooth)) {
+          // ignore: deprecated_member_use
+          final hex = value.value.toRadixString(16).padLeft(8, '0').substring(2);
+          final disease = diseaseColorMap[hex] ?? hex;
+          teethConditions[tooth] = disease;
+        }
       });
+      dentalChart['teethConditions'] = teethConditions;
     });
     _onExamChanged();
   }
@@ -582,7 +587,7 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
     try {
       // استخدم دومًا معرف المستخدم الحقيقي الممرر عبر widget.patientId
       final patientId = widget.patientId;
-      debugPrint('Submitting examination for patientId: ' + patientId);
+      debugPrint('Submitting examination for patientId: $patientId');
       if (patientId.isEmpty) {
         throw Exception('Patient ID is empty');
       }
@@ -674,6 +679,8 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
           ),
         );
         if (selectedCourseId != null) {
+          // ignore: duplicate_ignore
+          // ignore: use_build_context_synchronously
           final assigned = await _assignPatientToStudentAuto(context, patientId, selectedCourseId);
           if (!mounted) return;
           if (assigned) {
@@ -691,7 +698,7 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: e.toString()}')),
+        const SnackBar(content: Text('Error: e.toString()}')),
       );
     }
   }

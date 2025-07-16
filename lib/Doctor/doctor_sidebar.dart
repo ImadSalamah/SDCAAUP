@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:provider/provider.dart';
 import '../Shared/waiting_list_page.dart';
 import '../Doctor/doctor_pending_cases_page.dart';
 import '../Doctor/groups_page.dart';
@@ -8,6 +7,7 @@ import '../Doctor/examined_patients_page.dart';
 import '../dashboard/doctor_dashboard.dart';
 import 'prescription_page.dart';
 import 'doctor_xray_request_page.dart';
+import '../Doctor/assign_patients_to_student_page.dart';
 
 class DoctorSidebar extends StatelessWidget {
   final Color primaryColor;
@@ -40,6 +40,7 @@ class DoctorSidebar extends StatelessWidget {
       {'ar': 'تقييم الطلاب', 'en': 'Student Evaluation'},
       {'ar': 'مجموعات الإشراف', 'en': 'Supervision Groups'},
       {'ar': 'المرضى المفحوصين', 'en': 'Examined Patients'},
+      {'ar': 'تعيين مرضى للطلاب', 'en': 'Assign Patients to Students'},
     ];
     // Detect language (you can adjust this logic as needed)
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
@@ -155,7 +156,14 @@ class DoctorSidebar extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(
                 parentContext,
-                MaterialPageRoute(builder: (_) => DoctorXrayRequestPage()),
+                MaterialPageRoute(builder: (_) => const DoctorXrayRequestPage()),
+              );
+            }),
+            _buildSidebarItem(context, icon: Icons.assignment_ind, label: translate(context, 'assign_patients_to_students'), onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (_) => const AssignPatientsToStudentPage()),
               );
             }),
           ],

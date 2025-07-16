@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'admin_sidebar.dart';
@@ -72,8 +74,8 @@ class _AdminScaffoldState extends State<AdminScaffold> {
                   });
                 },
                 child: Container(
-                  color: Colors.black.withOpacity(0.3),
-                  alignment: Directionality.of(context) == TextDirection.rtl
+color: Colors.black.withAlpha(77),
+                   alignment: Directionality.of(context) == TextDirection.rtl
                       ? Alignment.centerRight
                       : Alignment.centerLeft,
                   child: GestureDetector(

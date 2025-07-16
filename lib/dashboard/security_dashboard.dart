@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -251,6 +253,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
 
     return Directionality(
       textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
+      // ignore: deprecated_member_use
       child: WillPopScope(
         onWillPop: () async {
           ScaffoldMessenger.of(context).clearMaterialBanners();
@@ -379,6 +382,195 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
       );
     }
 
+    // فحص حالة الحساب
+    final user = _auth.currentUser;
+    if (user != null) {
+      return FutureBuilder<DataSnapshot>(
+        future: _userRef.get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            final data = snapshot.data!.value as Map<dynamic, dynamic>?;
+            final isActive = data != null && (data['isActive'] == true || data['isActive'] == 1);
+            if (!isActive) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.block, color: Colors.red, size: 60),
+                      SizedBox(height: 24),
+                      Text(
+                        'يرجى مراجعة إدارة عيادات الأسنان في الجامعة لتفعيل حسابك.',
+                        style: TextStyle(fontSize: 20, color: Colors.red, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+          // ...existing dashboard body...
+          final mediaQuery = MediaQuery.of(context);
+          final isSmallScreen = mediaQuery.size.width < 350;
+
+          return Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                ),
+              ),
+              SingleChildScrollView(
+                padding: EdgeInsets.only(bottom: mediaQuery.padding.bottom + 20),
+                child: Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.all(20),
+                      height: isSmallScreen ? 180 : 200,
+                      decoration: BoxDecoration(
+                        image: const DecorationImage(
+                          image: AssetImage('lib/assets/backgrownd.png'),
+                          fit: BoxFit.cover,
+                        ),
+                        color: const Color(0x4D000000),
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 10,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0x33000000),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _userImageUrl.isNotEmpty
+                                    ? CircleAvatar(
+                                        radius: isSmallScreen ? 30 : 40,
+                                        backgroundColor:
+                                            Colors.white.withAlpha(204),
+                                        child: ClipOval(
+                                          child: Image.memory(
+                                            base64Decode(_userImageUrl.replaceFirst(
+                                                'data:image/jpeg;base64,', '')),
+                                            width: isSmallScreen ? 60 : 80,
+                                            height: isSmallScreen ? 60 : 80,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      )
+                                    : CircleAvatar(
+                                        radius: isSmallScreen ? 30 : 40,
+                                        backgroundColor:
+                                            Colors.white.withAlpha(204),
+                                        child: Icon(
+                                          Icons.person,
+                                          size: isSmallScreen ? 30 : 40,
+                                          color: accentColor,
+                                        ),
+                                      ),
+                                const SizedBox(height: 15),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: Text(
+                                    _userName,
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 16 : 20,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  _translate(context, 'security_officer'),
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 15,
+                        mainAxisSpacing: 15,
+                        childAspectRatio: 1.1,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const SearchPatientSecurityPage(),
+                                ),
+                              );
+                            },
+                            child: _buildFeatureBox(
+                              context,
+                              Icons.search,
+                              _translate(context, 'patient_search'),
+                              Colors.green,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              debugPrint("Face Recognition tapped");
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const FaceRecognitionOnlinePage(),
+                                ),
+                              );
+                            },
+                            child: _buildFeatureBox(
+                              context,
+                              Icons.face,
+                              _translate(context, 'face_recognition'),
+                              Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
+    // ...existing code for the normal dashboard body if user is null...
     final mediaQuery = MediaQuery.of(context);
     final isSmallScreen = mediaQuery.size.width < 350;
 
@@ -427,7 +619,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                               ? CircleAvatar(
                                   radius: isSmallScreen ? 30 : 40,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.8),
+                                      Colors.white.withAlpha(204),
                                   child: ClipOval(
                                     child: Image.memory(
                                       base64Decode(_userImageUrl.replaceFirst(
@@ -441,7 +633,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                               : CircleAvatar(
                                   radius: isSmallScreen ? 30 : 40,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.8),
+                                      Colors.white.withAlpha(204),
                                   child: Icon(
                                     Icons.person,
                                     size: isSmallScreen ? 30 : 40,
@@ -557,7 +749,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
             Container(
               padding: EdgeInsets.all(isTablet ? 18 : 12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withAlpha(25),
                 shape: BoxShape.circle,
               ),
               child: Icon(

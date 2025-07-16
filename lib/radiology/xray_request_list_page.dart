@@ -1,5 +1,6 @@
+// ignore_for_file: depend_on_referenced_packages, use_build_context_synchronously
+
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,7 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 class XrayRequestListPage extends StatefulWidget {
-  const XrayRequestListPage({Key? key}) : super(key: key);
+  const XrayRequestListPage({super.key});
 
   @override
   State<XrayRequestListPage> createState() => _XrayRequestListPageState();
@@ -266,7 +267,7 @@ class _XrayRequestListPageState extends State<XrayRequestListPage> {
                               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                               child: Row(
                                 children: [
-                                  Icon(Icons.person, color: primaryColor, size: 36),
+                                  const Icon(Icons.person, color: primaryColor, size: 36),
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
@@ -292,7 +293,7 @@ class _XrayRequestListPageState extends State<XrayRequestListPage> {
                                       ],
                                     ),
                                   ),
-                                  Icon(Icons.arrow_forward_ios, color: primaryColor, size: 20),
+                                  const Icon(Icons.arrow_forward_ios, color: primaryColor, size: 20),
                                 ],
                               ),
                             ),
@@ -310,7 +311,7 @@ class XrayUploadPage extends StatefulWidget {
   final Map<String, dynamic> request;
   final String lang;
   final Map<String, Map<String, String>> localizedStrings;
-  const XrayUploadPage({Key? key, required this.request, required this.lang, required this.localizedStrings}) : super(key: key);
+  const XrayUploadPage({super.key, required this.request, required this.lang, required this.localizedStrings});
 
   @override
   State<XrayUploadPage> createState() => _XrayUploadPageState();
@@ -366,21 +367,17 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
     final base64Image = base64Encode(xrayImageBytes!);
     // إرسال الصورة إلى السيرفر لتحليلها
     Map<String, dynamic>? analysisResultJson;
-    String? analyzedImageBase64;
+    // تم حذف analyzedImageBase64 لأنه لم يعد مستخدمًا
     try {
       final response = await fetchAnalyzedXray(base64Image);
       if (response != null) {
         analysisResultJson = response;
-        if (response['analyzedImage'] != null) {
-          analyzedImageBase64 = response['analyzedImage'];
-        }
       }
     } catch (e) {
-      analyzedImageBase64 = null;
       analysisResultJson = null;
     }
     final xrayImagesRef = FirebaseDatabase.instance.ref('xray_images');
-    // حفظ بيانات صورة الأشعة الأصلية والمحللة في مجموعة جديدة مع الموقع المطلوب، مع حفظ كل الجيسون الراجع من الAPI
+    // حفظ بيانات صورة الأشعة الأصلية ونتيجة التحليل فقط (بدون analyzedXrayImage)
     await xrayImagesRef.push().set({
       'patientName': _nameController.text.trim(),
       'idNumber': _idController.text.trim(),
@@ -391,7 +388,6 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
       'groupTeeth': req['groupTeeth'],
       'patientId': req['patientId'],
       'originalXrayImage': base64Image,
-      'analyzedXrayImage': analyzedImageBase64 ?? '',
       'analysisResultJson': analysisResultJson ?? {},
       'location': req['location'], // إضافة الموقع المطلوب
       'timestamp': DateTime.now().millisecondsSinceEpoch,
@@ -404,7 +400,8 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
   // دالة إرسال الصورة إلى السيرفر واستقبال الصورة المحللة
   Future<Map<String, dynamic>?> fetchAnalyzedXray(String base64Image) async {
     // عدل الرابط حسب عنوان السيرفر الفعلي
-    const String apiUrl = 'https://xraymodel.fly.dev/analyze';
+    // const String apiUrl = 'https://xraymodel.fly.dev/analyze';
+    const String apiUrl = 'http://192.168.1.106:8080/analyze';
     try {
       // فك تشفير base64 إلى bytes
       final imageBytes = base64Decode(base64Image);
@@ -420,11 +417,15 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode == 200) {
-        print('Server response: \\n${response.body}');
+        if (kDebugMode) {
+          print('Server response: \\n${response.body}');
+        }
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
     } catch (e) {
-      print('Error in fetchAnalyzedXray: $e');
+      if (kDebugMode) {
+        print('Error in fetchAnalyzedXray: $e');
+      }
     }
     return null;
   }
@@ -476,7 +477,7 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
                     ...List<Map>.from(req['groupTeeth']).map((t) => Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('• ', style: TextStyle(fontSize: 18)),
+                            const Text('• ', style: TextStyle(fontSize: 18)),
                             Expanded(
                               child: Text(
                                 (localizedStrings['group_tooth_label']?[lang] ?? 'سن: الفك {jaw} - الجهة {side} - رقم {tooth}')

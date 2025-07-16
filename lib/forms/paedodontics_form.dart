@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -381,7 +383,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
             ElevatedButton(
               onPressed: () {
                 if (reasonController.text.trim().isEmpty || noteController.text.trim().isEmpty) return;
-                Navigator.of(context).pop(reasonController.text.trim() + '||' + noteController.text.trim());
+                Navigator.of(context).pop('${reasonController.text.trim()}||${noteController.text.trim()}');
               },
               child: const Text('رفض'),
             ),
@@ -588,18 +590,18 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = const Color(0xFF2A7A94);
+    const Color primaryColor = Color(0xFF2A7A94);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_caseTypeLabel}  0{widget.caseNumber}'),
+        title: Text('$_caseTypeLabel  0{widget.caseNumber}'),
         centerTitle: true,
         backgroundColor: primaryColor, // لون أساسي للخلفية
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: Container(
-        color: primaryColor.withOpacity(0.06),
+color: primaryColor.withAlpha(15),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Directionality(
@@ -622,18 +624,18 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.person, color: primaryColor),
+                              const Icon(Icons.person, color: primaryColor),
                               const SizedBox(width: 8),
                               Text(
                                 widget.patient['fullName'] ?? '',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: primaryColor),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: primaryColor),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.cake, color: primaryColor, size: 20),
+                              const Icon(Icons.cake, color: primaryColor, size: 20),
                               const SizedBox(width: 6),
                               Text(
                                 (() {
@@ -656,14 +658,14 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                                 style: const TextStyle(fontSize: 15),
                               ),
                               const SizedBox(width: 18),
-                              Icon(Icons.wc, color: primaryColor, size: 20),
+                              const Icon(Icons.wc, color: primaryColor, size: 20),
                               const SizedBox(width: 6),
                               Text(
                                 (widget.patient['gender'] ?? '').toString().toLowerCase() == 'male' ? 'ذكر' : (widget.patient['gender'] ?? '').toString().toLowerCase() == 'female' ? 'أنثى' : '-',
                                 style: const TextStyle(fontSize: 15),
                               ),
                               const SizedBox(width: 18),
-                              Icon(Icons.calendar_today, color: primaryColor, size: 20),
+                              const Icon(Icons.calendar_today, color: primaryColor, size: 20),
                               const SizedBox(width: 6),
                               Text(
                                 '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}',
@@ -682,7 +684,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                       border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
                     ),
                     child: Text(
-                      'نوع الحالة: ${_caseTypeLabel}',
+                      'نوع الحالة: $_caseTypeLabel',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -744,13 +746,13 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                             data: Theme.of(context).copyWith(
                               unselectedWidgetColor: Colors.white, // لون غير محدد أبيض
                               checkboxTheme: CheckboxThemeData(
-                                fillColor: MaterialStateProperty.resolveWith<Color>((states) {
-                                  if (states.contains(MaterialState.selected)) {
+                                fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+                                  if (states.contains(WidgetState.selected)) {
                                     return primaryColor; // عند التحديد يصبح اللون الأساسي
                                   }
                                   return Colors.white; // غير محدد أبيض
                                 }),
-                                checkColor: MaterialStateProperty.all(Colors.white), // لون علامة الصح
+                                checkColor: WidgetStateProperty.all(Colors.white), // لون علامة الصح
                               ),
                             ),
                             child: CheckboxListTile(
@@ -804,7 +806,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                     data: Theme.of(context).copyWith(
                       unselectedWidgetColor: primaryColor,
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -923,7 +925,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                     data: Theme.of(context).copyWith(
                       unselectedWidgetColor: primaryColor,
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -992,7 +994,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                                 alignment: Alignment.center,
                                 padding: const EdgeInsets.all(8),
                                 height: 100, // زيادة الارتفاع لمحاكاة الدمج العمودي
-                                child: Text('Plaque index:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                child: const Text('Plaque index:', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                             ),
                             const Padding(
@@ -1035,22 +1037,22 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                             ],
                           ),
                         // صف عناوين الأسنان السفلية
-                        TableRow(
+                        const TableRow(
                           children: [
-                            const SizedBox(),
-                            const Padding(
+                            SizedBox(),
+                            Padding(
                               padding: EdgeInsets.all(4),
                               child: Text('44/84', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.all(4),
                               child: Text('42/82', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.all(4),
                               child: Text('36', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
-                            const SizedBox(),
+                            SizedBox(),
                           ],
                         ),
                       ],
@@ -1065,7 +1067,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -1085,7 +1087,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -1110,7 +1112,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -1130,7 +1132,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -1155,7 +1157,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -1189,7 +1191,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -1278,7 +1280,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   Theme(
                     data: Theme.of(context).copyWith(
                       radioTheme: RadioThemeData(
-                        fillColor: MaterialStateProperty.all(primaryColor),
+                        fillColor: WidgetStateProperty.all(primaryColor),
                       ),
                     ),
                     child: Row(
@@ -1350,7 +1352,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                   // Checkboxes للأشعة
                   Container(
                     alignment: Alignment.centerLeft,
-                    child: Text(
+                    child: const Text(
                       'Radiographs:',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -1522,7 +1524,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(child: SizedBox()), // فراغ لتكملة الصف
+                      const Expanded(child: SizedBox()), // فراغ لتكملة الصف
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -1651,25 +1653,6 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
     );
   }
 
-  Widget _buildPatientInfoRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
 
   Widget _buildCaseStatusSection() {
     Color statusColor;
@@ -1700,8 +1683,9 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: statusColor.withOpacity(0.1),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
+border: Border.all(color: statusColor.withAlpha(77)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

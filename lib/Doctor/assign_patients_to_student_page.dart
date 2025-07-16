@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class AssignPatientsToStudentPage extends StatefulWidget {
-  const AssignPatientsToStudentPage({Key? key}) : super(key: key);
+  const AssignPatientsToStudentPage({super.key});
 
   @override
   State<AssignPatientsToStudentPage> createState() => _AssignPatientsToStudentPageState();
@@ -18,7 +18,6 @@ class _AssignPatientsToStudentPageState extends State<AssignPatientsToStudentPag
   Set<String> _selectedPatientIds = {};
   bool _isLoading = true;
   bool _saving = false;
-  bool _clearing = false;
   String _searchQuery = '';
   String _patientSearchQuery = '';
 
@@ -37,19 +36,18 @@ class _AssignPatientsToStudentPageState extends State<AssignPatientsToStudentPag
       return;
     }
     final students = <Map<String, dynamic>>[];
-    final patients = <Map<String, dynamic>>[];
+    final allUsers = <Map<String, dynamic>>[];
     users.forEach((key, value) {
       final map = Map<String, dynamic>.from(value);
       final role = map['role']?.toString() ?? map['type']?.toString();
       if (role == 'dental_student') {
         students.add({...map, 'id': key});
-      } else if (role == 'patient') {
-        patients.add({...map, 'id': key});
       }
+      allUsers.add({...map, 'id': key});
     });
     setState(() {
       _students = students;
-      _patients = patients;
+      _patients = allUsers;
       _isLoading = false;
     });
   }
@@ -74,33 +72,10 @@ class _AssignPatientsToStudentPageState extends State<AssignPatientsToStudentPag
     }
     await _studentPatientsRef.update(updates);
     setState(() { _saving = false; });
+    // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ التعيينات بنجاح')));
   }
 
-  Future<void> _clearAllAssignments() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تأكيد'),
-        content: const Text('هل أنت متأكد أنك تريد إزالة جميع تعيينات المرضى من الطلاب؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('تأكيد'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    setState(() { _clearing = true; });
-    await _studentPatientsRef.remove();
-    setState(() { _clearing = false; _selectedPatientIds.clear(); });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إزالة جميع التعيينات بنجاح')));
-  }
 
   String _getFullName(Map<String, dynamic> user) {
     final first = user['firstName']?.toString().trim() ?? '';
@@ -164,10 +139,10 @@ class _AssignPatientsToStudentPageState extends State<AssignPatientsToStudentPag
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('اختر الطالب:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('اختر الطالب:', style: TextStyle(fontWeight: FontWeight.bold)),
                         // زر إزالة جميع التعيينات تم حذفه من صفحة الدكتور
                       ],
                     ),
@@ -260,7 +235,7 @@ class _AssignPatientsToStudentPageState extends State<AssignPatientsToStudentPag
                                                   }
                                                 });
                                               },
-                                              title: Text('${name.isNotEmpty ? name : 'بدون اسم'}'),
+                                              title: Text(name.isNotEmpty ? name : 'بدون اسم'),
                                               subtitle: Text('رقم الهوية: ${patient['idNumber'] ?? ''}'),
                                             );
                                           }).toList(),

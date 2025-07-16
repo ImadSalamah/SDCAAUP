@@ -1,8 +1,10 @@
+// ignore_for_file: use_build_context_synchronously, duplicate_ignore
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 
 class AssignPatientsAdminPage extends StatefulWidget {
-  const AssignPatientsAdminPage({Key? key}) : super(key: key);
+  const AssignPatientsAdminPage({super.key});
 
   @override
   State<AssignPatientsAdminPage> createState() => _AssignPatientsAdminPageState();
@@ -74,6 +76,7 @@ class _AssignPatientsAdminPageState extends State<AssignPatientsAdminPage> {
     }
     await _studentPatientsRef.update(updates);
     setState(() { _saving = false; });
+    // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ التعيينات بنجاح')));
   }
 
@@ -266,7 +269,7 @@ class _AssignPatientsAdminPageState extends State<AssignPatientsAdminPage> {
                                                   }
                                                 });
                                               },
-                                              title: Text('${name.isNotEmpty ? name : 'بدون اسم'}'),
+                                              title: Text(name.isNotEmpty ? name : 'بدون اسم'),
                                               subtitle: Text('رقم الهوية: ${patient['idNumber'] ?? ''}'),
                                             );
                                           }).toList(),

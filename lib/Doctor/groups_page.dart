@@ -167,7 +167,8 @@ class _DoctorGroupsPageState extends State<DoctorGroupsPage> {
                           ),
                           trailing: Container(
                             decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.15),
+                             color: accentColor.withAlpha(38),
+
                               borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.all(8),
@@ -196,7 +197,6 @@ class _GroupMarksPageState extends State<GroupMarksPage> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> _students = [];
   bool _isLoading = true;
-  late String _selectedSubject;
 
   // تعريف الحالات حسب رقم المادة (مطابق لتعريف cases_screen.dart)
   final Map<String, List<Map<String, dynamic>>> courseCases = {
@@ -213,7 +213,6 @@ class _GroupMarksPageState extends State<GroupMarksPage> {
   @override
   void initState() {
     super.initState();
-    _selectedSubject = widget.subject;
     _loadStudentsAndCases();
   }
 

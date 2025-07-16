@@ -1,13 +1,12 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:async';
 import '../../providers/language_provider.dart';
 import '../../providers/secretary_provider.dart';
-import '../dashboard/student_dashboard.dart';
 import '../Secretry/secretary_sidebar.dart';
 
 class PatientFilesPage extends StatefulWidget {
@@ -25,9 +24,6 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
   late DatabaseReference _waitingListRef;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String _userName = '';
-  String _userImageUrl = '';
-  Uint8List? _userImageBytes;
 
   List<Map<String, dynamic>> allUsers = [];
   List<Map<String, dynamic>> filteredUsers = [];
@@ -292,7 +288,7 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
         // إظهار رسالة للمستخدم
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_translate(context, 'add_to_waiting_list') + ': ' + _translate(context, 'name') + ' "' + _getFullName(user) + '" ' + 'موجود بالفعل في قائمة الانتظار'),
+            content: Text('${_translate(context, 'add_to_waiting_list')}: ${_translate(context, 'name')} "${_getFullName(user)}" موجود بالفعل في قائمة الانتظار'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -366,7 +362,7 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
                                     child: ListTile(
                                       leading: CircleAvatar(
                                         backgroundColor: accentColor,
-                                        child: Icon(Icons.person, color: Colors.white),
+                                        child: const Icon(Icons.person, color: Colors.white),
                                       ),
                                       title: Text(_getFullName(user), style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
                                       subtitle: Text('${_translate(context, 'age')}: ${_formatAge(context, user['birthDate'])}'),
@@ -394,7 +390,7 @@ class _PatientFilesPageState extends State<PatientFilesPage> {
                                       elevation: 2,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                       child: ListTile(
-                                        leading: CircleAvatar(
+                                        leading: const CircleAvatar(
                                           backgroundColor: Colors.orange,
                                           child: Icon(Icons.timer, color: Colors.white),
                                         ),

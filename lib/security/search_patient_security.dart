@@ -1,10 +1,11 @@
+// ignore_for_file: unused_import
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../security/security_sidebar.dart';
-import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'patient_appointments_page.dart'; // تأكد من استيراد صفحة المواعيد
 import 'dart:convert';
@@ -171,8 +172,8 @@ class _SearchPatientSecurityPageState extends State<SearchPatientSecurityPage> {
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final isArabic = languageProvider.currentLocale.languageCode == 'ar';
-    final primaryColor = const Color(0xFF2A7A94);
-    final accentColor = const Color(0xFF4AB8D8);
+    const primaryColor = Color(0xFF2A7A94);
+    const accentColor = Color(0xFF4AB8D8);
     final mediaQuery = MediaQuery.of(context);
     final isSmallScreen = mediaQuery.size.width < 350;
 
@@ -202,7 +203,7 @@ class _SearchPatientSecurityPageState extends State<SearchPatientSecurityPage> {
               controller: _searchController,
               decoration: InputDecoration(
                 labelText: isArabic ? 'ابحث بالاسم أو رقم الهوية' : 'Search by name or ID',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.search),
               ),
               textAlign: isArabic ? TextAlign.right : TextAlign.left,
@@ -231,11 +232,13 @@ class _SearchPatientSecurityPageState extends State<SearchPatientSecurityPage> {
                                         : user['image'].toString(),
                                   ),
                                 ),
-                                backgroundColor: accentColor.withOpacity(0.2),
+                              backgroundColor: accentColor.withAlpha(51),
+
                               )
                             : CircleAvatar(
-                                backgroundColor: accentColor.withOpacity(0.2),
-                                child: Icon(Icons.person, color: primaryColor),
+                              backgroundColor: accentColor.withAlpha(51),
+
+                                child: const Icon(Icons.person, color: primaryColor),
                               ),
                         title: Text(
                           user['fullName'] ?? '',

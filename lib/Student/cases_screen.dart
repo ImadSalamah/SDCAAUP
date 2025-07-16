@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use, unnecessary_to_list_in_spreads, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,8 +20,8 @@ class CasesScreen extends StatefulWidget {
     required this.courseId,
     required this.courseName,
     required this.requiredCases,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<CasesScreen> createState() => _CasesScreenState();
@@ -215,7 +217,7 @@ class _CasesScreenState extends State<CasesScreen> {
         caseType: type,
       );
     } else {
-      formPage = Scaffold(body: Center(child: Text('لا يوجد فورم لهذه المادة')));
+      formPage = const Scaffold(body: Center(child: Text('لا يوجد فورم لهذه المادة')));
     }
     Navigator.push(
       context,
@@ -529,7 +531,7 @@ class _CasesScreenState extends State<CasesScreen> {
       );
     }
     // في حال لم يتم تعريف المادة
-    return Center(child: Text('لا يوجد متطلبات لهذه المادة'));
+    return const Center(child: Text('لا يوجد متطلبات لهذه المادة'));
   }
 
   @override
@@ -563,11 +565,11 @@ class _CasesScreenState extends State<CasesScreen> {
         children: [
           DrawerHeader(
             decoration: BoxDecoration(color: primaryColor),
-            child: Column(
+            child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.assignment, size: 48, color: Colors.white),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Text('حالات الطالب',
                     style: TextStyle(
                         color: Colors.white,
@@ -604,11 +606,9 @@ class _DynamicFormPage extends StatefulWidget {
     required this.groupId,
     required this.courseId,
     required this.formIndex,
-    required this.form,
-    this.patient,
-    this.onSave,
-    Key? key,
-  }) : super(key: key);
+    // ignore: unused_element_parameter
+    required this.form, this.patient, this.onSave,
+  });
 
   @override
   State<_DynamicFormPage> createState() => _DynamicFormPageState();
@@ -665,7 +665,7 @@ class _DynamicFormPageState extends State<_DynamicFormPage> {
                     child: TextFormField(
                       decoration: InputDecoration(
                         labelText: label,
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                       ),
                       onSaved: (val) => _values[label] = val,
                       validator: (val) => (val == null || val.isEmpty) ? 'مطلوب' : null,
@@ -677,7 +677,7 @@ class _DynamicFormPageState extends State<_DynamicFormPage> {
                     child: TextFormField(
                       decoration: InputDecoration(
                         labelText: label,
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
                       onSaved: (val) => _values[label] = val,

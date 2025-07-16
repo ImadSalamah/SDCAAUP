@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -77,13 +79,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    // Set language to English when entering admin dashboard
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
-      if (!languageProvider.isEnglish) {
-        languageProvider.toggleLanguage();
-      }
-    });
+    // تم إزالة تعيين اللغة الافتراضية للإنجليزية عند فتح لوحة الإدارة
     _initializeReferences();
     _loadAdminData();
     _loadAllUsers();
@@ -260,7 +256,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           if (data['title'] != null) {
             bannerMsg = data['title'].toString();
             if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
-              bannerMsg += '\n' + data['message'].toString();
+              bannerMsg += '\n${data['message']}';
             }
           } else {
             bannerMsg = 'لديك إشعار جديد';
@@ -354,7 +350,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         });
                       },
                       child: Container(
-                        color: Colors.black.withOpacity(0.3),
+                       color: Colors.black.withAlpha(77),
                         alignment: _isArabic(context)
                             ? Alignment.centerRight
                             : Alignment.centerLeft,
@@ -589,7 +585,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 _userImageUrl.isNotEmpty
                     ? CircleAvatar(
                         radius: isSmallScreen ? 30 : (isWide ? 55 : (isTablet ? 45 : 40)),
-                        backgroundColor: Colors.white.withOpacity(0.8),
+                        backgroundColor: Colors.white.withAlpha(204),
                         child: ClipOval(
                           child: Image.memory(
                             base64Decode(_userImageUrl.replaceFirst('data:image/jpeg;base64,', '')),
@@ -601,7 +597,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       )
                     : CircleAvatar(
                         radius: isSmallScreen ? 30 : (isWide ? 55 : (isTablet ? 45 : 40)),
-                        backgroundColor: Colors.white.withOpacity(0.8),
+                        backgroundColor: Colors.white.withAlpha(204),
                         child: Icon(
                           Icons.person,
                           size: isSmallScreen ? 30 : (isWide ? 55 : (isTablet ? 45 : 40)),
@@ -700,7 +696,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Container(
                 padding: EdgeInsets.all(isTablet ? 18 : 12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(25),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

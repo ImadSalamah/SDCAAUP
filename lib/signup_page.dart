@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +14,6 @@ import '../providers/language_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'Shared/signup_help_showcase.dart';
-import '../dashboard/patient_dashboard.dart';
 import '../PendingPatientPage.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -559,7 +560,8 @@ class SignUpPageState extends State<SignUpPage> {
         maxLength: maxLength,
         decoration: InputDecoration(
           labelText: labelText,
-          labelStyle: TextStyle(color: primaryColor.withOpacity(0.8)),
+          labelStyle: TextStyle(color: primaryColor.withAlpha(204)),
+
           prefixIcon: prefixIcon,
           suffixIcon: Row(
             mainAxisSize: MainAxisSize.min,
@@ -609,7 +611,8 @@ class SignUpPageState extends State<SignUpPage> {
           child: Text(
             '${_translate('gender')} ${_translate('required_field')}',
             style: TextStyle(
-              color: primaryColor.withOpacity(0.8),
+              color: primaryColor.withAlpha(204),
+
               fontSize: 16,
             ),
           ),
@@ -893,7 +896,8 @@ class SignUpPageState extends State<SignUpPage> {
                                           child: InputDecorator(
                                             decoration: InputDecoration(
                                               labelText: '${_translate('birth_date')} ${_translate('required_field')}',
-                                              labelStyle: TextStyle(color: primaryColor.withOpacity(0.8)),
+                                              labelStyle: TextStyle(color: primaryColor.withAlpha(204)),
+
                                               prefixIcon: Icon(Icons.calendar_today, color: accentColor),
                                               filled: true,
                                               fillColor: Colors.grey[50],

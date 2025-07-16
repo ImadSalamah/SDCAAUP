@@ -1,7 +1,7 @@
+// ignore_for_file: file_names
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ScreeningForm extends StatefulWidget {
@@ -19,6 +19,7 @@ class ScreeningForm extends StatefulWidget {
   });
 
   @override
+  // ignore: library_private_types_in_public_api
   _ScreeningFormState createState() => _ScreeningFormState();
 }
 
@@ -360,6 +361,7 @@ class _ScreeningFormState extends State<ScreeningForm> {
       await _clearLocalData(); // حذف الحفظ المحلي بعد الحفظ النهائي
     }
     // لا ترسل إلى قاعدة البيانات هنا، سيتم الإرسال من الصفحة الأم فقط
+    // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم حفظ بيانات الفحص المبدئي مؤقتًا')),
     );

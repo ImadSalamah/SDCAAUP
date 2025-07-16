@@ -33,7 +33,7 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
   TimeOfDay? _endTime;
   String? _selectedClinic;
   List<String> _selectedDays = [];
-  String? _selectedDoctorId;
+  List<String> _selectedDoctorIds = [];
   List<String> _selectedStudents = [];
   String? _groupNumber;
   String? _editingGroupId;
@@ -57,7 +57,7 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
   List<Map<String, dynamic>> _allStudents = [];
   List<Map<String, dynamic>> _filteredStudents = [];
   // استبدل قائمة المواد لتكون ثابتة
-  List<Map<String, dynamic>> _subjects = [
+  final List<Map<String, dynamic>> _subjects = [
     {'id': '1', 'name': 'Paedodontics I', 'code': '080114140'},
     {'id': '2', 'name': 'Orthodontics', 'code': '080114141'},
   ];
@@ -174,7 +174,14 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
     setState(() {
       _editingGroupId = groupId;
       _selectedCourse = group['courseName'];
-      _selectedDoctorId = group['doctorId'];
+      // دعم أكثر من طبيب
+      if (group['doctorIds'] != null && group['doctorIds'] is List) {
+        _selectedDoctorIds = List<String>.from(group['doctorIds']);
+      } else if (group['doctorId'] != null) {
+        _selectedDoctorIds = [group['doctorId']];
+      } else {
+        _selectedDoctorIds = [];
+      }
       _selectedClinic = group['clinic'];
 
       // تحويل وقت البداية
@@ -262,8 +269,9 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
         final user = _auth.currentUser;
         if (user == null) return;
 
-        final doctor =
-            _doctors.firstWhere((doc) => doc['id'] == _selectedDoctorId);
+        // جلب بيانات الأطباء المختارين
+        final selectedDoctors = _doctors.where((doc) => _selectedDoctorIds.contains(doc['id'])).toList();
+        final doctorNames = selectedDoctors.map((doc) => doc['name']).toList();
 
         // تحويل الطلاب المختارين إلى Map باستخدام uid
         final studentsMap = {};
@@ -280,8 +288,8 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
           'courseName': _selectedCourse,
           'courseId':
               _selectedCourse!.split('(').last.replaceAll(')', '').trim(),
-          'doctorId': _selectedDoctorId,
-          'doctorName': doctor['name'],
+          'doctorIds': _selectedDoctorIds,
+          'doctorNames': doctorNames,
           'startTime':
               '${_startTime!.hour}:${_startTime!.minute.toString().padLeft(2, '0')}',
           'endTime':
@@ -343,7 +351,7 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
       _endTime = null;
       _selectedClinic = null;
       _selectedDays = [];
-      _selectedDoctorId = null;
+      _selectedDoctorIds = [];
       _selectedStudents = [];
       _groupNumber = null;
       _groupNumberController.clear();
@@ -480,35 +488,42 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
 
                             const SizedBox(height: 20),
 
-                            // اختيار الطبيب المشرف
-                            DropdownButtonFormField<String>(
+                            // اختيار الأطباء المشرفين (متعدد)
+                            InputDecorator(
                               decoration: const InputDecoration(
-                                labelText: 'اختر الطبيب المشرف',
+                                labelText: 'اختر الأطباء المشرفين',
                                 border: OutlineInputBorder(),
                               ),
-                              value: _doctors.any((d) => d['id'] == _selectedDoctorId)
-                                  ? _selectedDoctorId
-                                  : null,
-                              items: _doctors.isEmpty
-                                  ? [
-                                      const DropdownMenuItem<String>(
-                                        value: null,
-                                        child: Text('لا يوجد أطباء متاحين'),
-                                      ),
-                                    ]
-                                  : _doctors.map<DropdownMenuItem<String>>((doctor) {
-                                      return DropdownMenuItem<String>(
-                                        value: doctor['id'] as String,
-                                        child: Text(
-                                            '${doctor['name'] ?? ''}${doctor['specialty'] != null ? ' - ${doctor['specialty']}' : ''}'),
-                                      );
-                                    }).toList(),
-                              onChanged: _doctors.isEmpty
-                                  ? null
-                                  : (value) => setState(() => _selectedDoctorId = value),
-                              validator: (value) => value == null ? 'مطلوب' : null,
-                              disabledHint: const Text('لا يوجد أطباء متاحين'),
+                              child: _doctors.isEmpty
+                                  ? const Text('لا يوجد أطباء متاحين')
+                                  : Wrap(
+                                      spacing: 8.0,
+                                      children: _doctors.map((doctor) {
+                                        final isSelected = _selectedDoctorIds.contains(doctor['id']);
+                                        return FilterChip(
+                                          label: Text(doctor['name']),
+                                          selected: isSelected,
+                                          onSelected: (selected) {
+                                            setState(() {
+                                              if (selected) {
+                                                _selectedDoctorIds.add(doctor['id']);
+                                              } else {
+                                                _selectedDoctorIds.remove(doctor['id']);
+                                              }
+                                            });
+                                          },
+                                        );
+                                      }).toList(),
+                                    ),
                             ),
+                            if (_selectedDoctorIds.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  'مطلوب',
+                                  style: TextStyle(color: Colors.red, fontSize: 12),
+                                ),
+                              ),
 
                             const SizedBox(height: 20),
 
@@ -704,7 +719,9 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
                                       child: ExpansionTile(
                                         title: Text(
                                             'الشعبة ${group['groupNumber']} - ${group['courseName']}'),
-                                        subtitle: Text('بإشراف د. ${group['doctorName']}'),
+                                        subtitle: group['doctorNames'] != null && group['doctorNames'] is List
+                                            ? Text('بإشراف: ${(group['doctorNames'] as List).join('، ')}')
+                                            : Text('بإشراف د. ${group['doctorName'] ?? ''}'),
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
@@ -766,7 +783,8 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
                             });
                           },
                           child: Container(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withAlpha(77),
+
                             alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
                             child: GestureDetector(
                               onTap: () {},
