@@ -14,6 +14,7 @@ import '../notifications_page.dart';
 import '../Doctor/prescription_page.dart';
 import '../Doctor/doctor_xray_request_page.dart';
 import '../Doctor/assign_patients_to_student_page.dart';
+import '../forms/clinical_procedures_form.dart';
 
 
 class SupervisorDashboard extends StatefulWidget {
@@ -516,6 +517,22 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
               }
             },
             {
+              'icon': Icons.medical_information,
+              'title': _isArabic(context) ? 'نموذج الإجراءات السريرية' : 'Clinical Procedures Form',
+              'color': Colors.redAccent,
+              'onTap': () {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ClinicalProceduresForm(uid: user.uid),
+                    ),
+                  );
+                }
+              }
+            },
+            {
               'icon': Icons.school,
               'title': _translate(context, 'students_evaluation'),
               'color': Colors.green,
@@ -619,12 +636,12 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                     child: Column(
                       children: [
                         Container(
-                          margin: const EdgeInsets.all(20),
-                          height: isSmallScreen ? 180 : (isWide ? 240 : (isTablet ? 220 : 200)),
+                          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                          height: isSmallScreen ? 210 : (isWide ? 210 : (isTablet ? 250 : 230)),
                           decoration: BoxDecoration(
                             image: const DecorationImage(
                               image: AssetImage('lib/assets/backgrownd.png'),
-                              fit: BoxFit.cover,
+                              fit: BoxFit.fill,
                             ),
                             color: const Color(0x4D000000),
                             borderRadius: BorderRadius.circular(15),
@@ -753,6 +770,43 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
             context,
             MaterialPageRoute(
               builder: (context) => const WaitingListPage(userRole: 'doctor'),
+            ),
+          );
+        }
+      },
+      
+      {
+        'icon': Icons.medical_information,
+        'title': _isArabic(context) ? 'نموذج الإجراءات السريرية' : 'Clinical Procedures Form',
+        'color': Colors.redAccent,
+        'onTap': () {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ClinicalProceduresForm(uid: user.uid),
+              ),
+            );
+          }
+        }
+      },
+      {
+        'icon': Icons.medical_information,
+        'title': _isArabic(context) ? 'نموذج الإجراءات السريرية' : 'Clinical Procedures Form',
+        'color': Colors.redAccent,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  return ClinicalProceduresForm(uid: user.uid);
+                } else {
+                  return const SizedBox();
+                }
+              },
             ),
           );
         }

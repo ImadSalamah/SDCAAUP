@@ -154,6 +154,7 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
     'no_mark': {'ar': 'بدون علامة', 'en': 'No mark'},
     'submit_success': {'ar': 'تم إرسال الحالة للدكتور المشرف', 'en': 'Case submitted to supervisor'},
     'must_login': {'ar': 'يجب تسجيل الدخول', 'en': 'You must login'},
+    'case_type': {'ar': 'نوع الحالة', 'en': 'Case Type'},
   };
 
   String _translate(String key) {
@@ -594,7 +595,13 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('$_caseTypeLabel  0{widget.caseNumber}'),
+        title: Text('(${widget.caseNumber}) أخذ التاريخ والفحص والتخطيط',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.white,
+            ),
+        ),
         centerTitle: true,
         backgroundColor: primaryColor, // لون أساسي للخلفية
         iconTheme: const IconThemeData(color: Colors.white),
@@ -664,7 +671,7 @@ color: primaryColor.withAlpha(15),
                                 (widget.patient['gender'] ?? '').toString().toLowerCase() == 'male' ? 'ذكر' : (widget.patient['gender'] ?? '').toString().toLowerCase() == 'female' ? 'أنثى' : '-',
                                 style: const TextStyle(fontSize: 15),
                               ),
-                              const SizedBox(width: 18),
+// ...existing code...
                               const Icon(Icons.calendar_today, color: primaryColor, size: 20),
                               const SizedBox(width: 6),
                               Text(
@@ -684,7 +691,7 @@ color: primaryColor.withAlpha(15),
                       border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
                     ),
                     child: Text(
-                      'نوع الحالة: $_caseTypeLabel',
+                      '${_translate('case_type')}: $_caseTypeLabel',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -993,7 +1000,7 @@ color: primaryColor.withAlpha(15),
                               child: Container(
                                 alignment: Alignment.center,
                                 padding: const EdgeInsets.all(8),
-                                height: 100, // زيادة الارتفاع لمحاكاة الدمج العمودي
+                                height: 100,
                                 child: const Text('Plaque index:', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                             ),
@@ -1015,28 +1022,54 @@ color: primaryColor.withAlpha(15),
                             ),
                           ],
                         ),
-                        // صفان فارغان للكتابة (بدون عمود أول)
-                        for (int i = 0; i < 2; i++)
-                          TableRow(
+                        ...List.generate(2, (i) {
+                          return TableRow(
                             children: [
                               const SizedBox(),
-                              for (int j = 0; j < 4; j++)
+                              ...List.generate(3, (j) =>
                                 Padding(
                                   padding: const EdgeInsets.all(4),
                                   child: TextFormField(
                                     controller: plaqueIndexControllers[i][j],
-                                    textAlign: TextAlign.center,
+                                    keyboardType: TextInputType.number,
                                     decoration: const InputDecoration(
-                                      border: InputBorder.none,
+                                      border: OutlineInputBorder(),
                                       isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                                     ),
+                                    textAlign: TextAlign.center,
                                     style: const TextStyle(fontSize: 15),
                                   ),
                                 ),
+                              ),
+                              // عمود Total في الصف الثاني فقط
+                              if (i == 1)
+                                Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Builder(
+                                    builder: (context) {
+                                      double sum = 0;
+                                      int count = 0;
+                                      for (int row = 0; row < 2; row++) {
+                                        for (int col = 0; col < 3; col++) {
+                                          final text = plaqueIndexControllers[row][col].text;
+                                          final value = double.tryParse(text);
+                                          if (value != null) {
+                                            sum += value;
+                                            count++;
+                                          }
+                                        }
+                                      }
+                                      final avg = count > 0 ? (sum / 6) : 0;
+                                      return Text(avg.toStringAsFixed(2), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold));
+                                    },
+                                  ),
+                                )
+                              else
+                                const SizedBox(),
                             ],
-                          ),
-                        // صف عناوين الأسنان السفلية
+                          );
+                        }),
                         const TableRow(
                           children: [
                             SizedBox(),

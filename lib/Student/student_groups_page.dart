@@ -111,31 +111,18 @@ class StudentGroupsPageState extends State<StudentGroupsPage> {
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF2A7A94);
     const Color accentColor = Color(0xFF4AB8D8);
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'شعبي الدراسية' : 'My Study Groups', style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: primaryColor,
         centerTitle: true,
-        leading: isRtl
-            ? Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              )
-            : null,
-        actions: !isRtl
-            ? [
-                Builder(
-                  builder: (context) => IconButton(
-                    icon: const Icon(Icons.menu),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
-                  ),
-                ),
-              ]
-            : null,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
       ),
       drawer: StudentSidebar(
         studentName: _studentName,

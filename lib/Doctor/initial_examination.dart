@@ -29,6 +29,16 @@ class InitialExamination extends StatefulWidget {
 }
 
 class _InitialExaminationState extends State<InitialExamination> with SingleTickerProviderStateMixin {
+  double getResponsiveFontSize(BuildContext context, {double base = 18, double min = 12}) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 400) {
+      return min;
+    } else if (width < 600) {
+      return (base + min) / 2;
+    } else {
+      return base;
+    }
+  }
   Future<void> _saveTabIndex(int index) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('initial_exam_tab_index', index);
@@ -46,7 +56,6 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
     return ScreeningForm(
       patientData: widget.patientData,
       age: widget.age,
-      // تمرير بيانات الفحص السابقة إن وجدت
       initialData: _screeningData,
       onSave: (screeningData) {
         setState(() {
@@ -424,13 +433,12 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
     final p = widget.patientData;
     if (p == null) return const SizedBox.shrink();
 
-    // بناء الاسم الرباعي مع إظهار الاسم الثالث حتى لو كان فارغًا
     final firstName = (p['firstName'] ?? '').toString().trim();
     final fatherName = (p['fatherName'] ?? '').toString().trim();
     final grandFatherName = (p['grandfatherName'] ?? '').toString().trim();
     final familyName = (p['familyName'] ?? '').toString().trim();
     final fullName = [firstName, fatherName, grandFatherName, familyName].join(' ').replaceAll(RegExp(' +'), ' ').trim();
-
+    final fontSize = getResponsiveFontSize(context, base: 16, min: 11);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12.0),
@@ -438,10 +446,10 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (fullName.isNotEmpty)
-              Text('اسم المريض: $fullName'),
-            if (widget.age != null) Text('العمر: ${widget.age}'),
-            if (p['gender'] != null) Text('الجنس: ${p['gender']}'),
-            if (p['phone'] != null) Text('رقم الهاتف: ${p['phone']}'),
+              Text('اسم المريض: $fullName', style: TextStyle(fontSize: fontSize)),
+            if (widget.age != null) Text('العمر: ${widget.age}', style: TextStyle(fontSize: fontSize)),
+            if (p['gender'] != null) Text('الجنس: ${p['gender']}', style: TextStyle(fontSize: fontSize)),
+            if (p['phone'] != null) Text('رقم الهاتف: ${p['phone']}', style: TextStyle(fontSize: fontSize)),
           ],
         ),
       ),
@@ -455,7 +463,7 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(title, style: TextStyle(fontSize: getResponsiveFontSize(context, base: 18, min: 12), fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ...children,
         ],
@@ -470,9 +478,9 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
   }) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: getResponsiveFontSize(context, base: 16, min: 11))),
       ...options.map((option) => RadioListTile<String>(
-        title: Text(option),
+        title: Text(option, style: TextStyle(fontSize: getResponsiveFontSize(context, base: 16, min: 11))),
         value: option,
         groupValue: _examData[key] as String? ?? '',
         onChanged: (v) => v != null ? _updateExamData(key, v) : null,
@@ -489,10 +497,10 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(entry.key),
+              Text(entry.key, style: TextStyle(fontSize: getResponsiveFontSize(context, base: 16, min: 11))),
               Row(children: List.generate(5, (index) => Expanded(
                 child: RadioListTile<int>(
-                  title: Text('$index'),
+                  title: Text('$index', style: TextStyle(fontSize: getResponsiveFontSize(context, base: 16, min: 11))),
                   value: index,
                   groupValue: entry.value as int? ?? 0,
                   onChanged: (v) => v != null ? _updateChart(entry.key, v) : null,
@@ -535,6 +543,7 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
               });
               _onExamChanged();
             },
+            textStyle: TextStyle(fontSize: getResponsiveFontSize(context, base: 16, min: 11)),
           ),
         ),
       ),
@@ -557,7 +566,7 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
       'Crown': const Color(0xFFFF7043),               // Deep Orange
       'Implant': const Color(0xFF43A047),             // Dark Green
     };
-
+    final fontSize = getResponsiveFontSize(context, base: 14, min: 10);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -575,7 +584,7 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
                 ),
               ),
               const SizedBox(width: 8),
-              Text(entry.key),
+              Text(entry.key, style: TextStyle(fontSize: fontSize)),
             ],
           ),
         )).toList(),

@@ -306,9 +306,14 @@ class _CasesScreenState extends State<CasesScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              type == 'history'
-                                  ? 'حالة تاريخ وفحص #$number'
-                                  : 'حالة سد شقوق #$number',
+                              (type == 'history'
+                                  ? (Localizations.localeOf(context).languageCode == 'ar'
+                                      ? 'حالة تاريخ وفحص #$number'
+                                      : 'History & Exam Case #$number')
+                                  : (Localizations.localeOf(context).languageCode == 'ar'
+                                      ? 'حالة سد شقوق #$number'
+                                      : 'Fissure Sealant Case #$number')
+                              ),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,

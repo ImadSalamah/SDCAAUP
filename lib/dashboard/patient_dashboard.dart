@@ -478,7 +478,6 @@ class _PatientDashboardState extends State<PatientDashboard> {
     // فحص حالة الحساب
     final user = _auth.currentUser;
     if (user != null) {
-      // سنستخدم FutureBuilder لجلب isActive مباشرة من الداتا
       return FutureBuilder<DataSnapshot>(
         future: _patientRef.get(),
         builder: (context, snapshot) {
@@ -509,7 +508,12 @@ class _PatientDashboardState extends State<PatientDashboard> {
             }
           }
           final mediaQuery = MediaQuery.of(context);
-          final isSmallScreen = mediaQuery.size.width < 350;
+          final width = mediaQuery.size.width;
+          final isSmallScreen = width < 350;
+          final isWide = width > 900;
+          final isTablet = width >= 600 && width <= 900;
+          final crossAxisCount = isWide ? 4 : (isTablet ? 3 : 2);
+          final gridChildAspectRatio = isWide ? 1.1 : (isTablet ? 1.2 : 1.1);
 
           return Stack(
             children: [
@@ -524,7 +528,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   children: [
                     Container(
                       margin: const EdgeInsets.all(20),
-                      height: isSmallScreen ? 180 : 200,
+                      height: isSmallScreen ? 180 : (isWide ? 240 : (isTablet ? 220 : 200)),
                       decoration: BoxDecoration(
                         image: const DecorationImage(
                           image: AssetImage('lib/assets/backgrownd.png'),
@@ -554,38 +558,52 @@ class _PatientDashboardState extends State<PatientDashboard> {
                               children: [
                                 _patientImageUrl.isNotEmpty
                                     ? CircleAvatar(
-                                        radius: isSmallScreen ? 30 : 40,
+                                        radius: isSmallScreen
+                                            ? 30
+                                            : (isWide ? 55 : (isTablet ? 45 : 40)),
                                         backgroundColor: Colors.white.withAlpha(204),
                                         child: ClipOval(
                                           child: Image.memory(
                                             base64.decode(_patientImageUrl),
-                                            width: isSmallScreen ? 60 : 80,
-                                            height: isSmallScreen ? 60 : 80,
+                                            width: isSmallScreen
+                                                ? 60
+                                                : (isWide ? 110 : (isTablet ? 90 : 80)),
+                                            height: isSmallScreen
+                                                ? 60
+                                                : (isWide ? 110 : (isTablet ? 90 : 80)),
                                             fit: BoxFit.cover,
                                             errorBuilder: (context, error, stackTrace) => Icon(
                                               Icons.person,
-                                              size: isSmallScreen ? 30 : 40,
+                                              size: isSmallScreen
+                                                  ? 30
+                                                  : (isWide ? 55 : (isTablet ? 45 : 40)),
                                               color: accentColor,
                                             ),
                                           ),
                                         ),
                                       )
                                     : CircleAvatar(
-                                        radius: isSmallScreen ? 30 : 40,
+                                        radius: isSmallScreen
+                                            ? 30
+                                            : (isWide ? 55 : (isTablet ? 45 : 40)),
                                         backgroundColor: Colors.white.withAlpha(204),
                                         child: Icon(
                                           Icons.person,
-                                          size: isSmallScreen ? 30 : 40,
+                                          size: isSmallScreen
+                                              ? 30
+                                              : (isWide ? 55 : (isTablet ? 45 : 40)),
                                           color: accentColor,
                                         ),
                                       ),
-                                const SizedBox(height: 15),
+                                SizedBox(height: isWide ? 30 : (isTablet ? 25 : 15)),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 8),
                                   child: Text(
                                     _patientName,
                                     style: TextStyle(
-                                      fontSize: isSmallScreen ? 16 : 20,
+                                      fontSize: isSmallScreen
+                                          ? 16
+                                          : (isWide ? 28 : (isTablet ? 22 : 20)),
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -602,66 +620,75 @@ class _PatientDashboardState extends State<PatientDashboard> {
                     ),
                     Padding(
                       padding: const EdgeInsets.all(20),
-                      child: GridView.count(
+                      child: GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 15,
-                        mainAxisSpacing: 15,
-                        childAspectRatio: 1.1,
-                        children: [
-                          // تم حذف السجلات الطبية بناءً على طلبك
-                          _buildFeatureBox(
-                            context,
-                            Icons.calendar_today,
-                            _translate(context, 'appointments'),
-                            Colors.green,
-                            () {
-                              final user = _auth.currentUser;
-                              if (user != null) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => PatientAppointmentsPage(
-                                      patientUid: user.uid,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                          _buildFeatureBox(
-                            context,
-                            Icons.medication,
-                            _translate(context, 'prescriptions'),
-                            Colors.orange,
-                            () {
-                              final user = _auth.currentUser;
-                              if (user != null) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => PatientPrescriptionsPage(patientId: user.uid),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                          _buildFeatureBox(
-                            context,
-                            Icons.person,
-                            _translate(context, 'profile'),
-                            Colors.purple,
-                            () async {
-                              Navigator.push(
+                        itemCount: 3,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                          childAspectRatio: gridChildAspectRatio,
+                        ),
+                        itemBuilder: (context, index) {
+                          switch (index) {
+                            case 0:
+                              return _buildFeatureBox(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (context) => const PatientProfilePage(),
-                                ),
+                                Icons.calendar_today,
+                                _translate(context, 'appointments'),
+                                Colors.green,
+                                () {
+                                  final user = _auth.currentUser;
+                                  if (user != null) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => PatientAppointmentsPage(
+                                          patientUid: user.uid,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
                               );
-                            },
-                          ),
-                        ],
+                            case 1:
+                              return _buildFeatureBox(
+                                context,
+                                Icons.medication,
+                                _translate(context, 'prescriptions'),
+                                Colors.orange,
+                                () {
+                                  final user = _auth.currentUser;
+                                  if (user != null) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => PatientPrescriptionsPage(patientId: user.uid),
+                                      ),
+                                    );
+                                  }
+                                },
+                              );
+                            case 2:
+                              return _buildFeatureBox(
+                                context,
+                                Icons.person,
+                                _translate(context, 'profile'),
+                                Colors.purple,
+                                () async {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const PatientProfilePage(),
+                                    ),
+                                  );
+                                },
+                              );
+                            default:
+                              return const SizedBox.shrink();
+                          }
+                        },
                       ),
                     ),
                   ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../forms/clinical_procedures_form.dart';
 import 'dart:convert';
 import '../Shared/waiting_list_page.dart';
 import '../Doctor/doctor_pending_cases_page.dart';
@@ -43,7 +44,7 @@ class DoctorSidebar extends StatelessWidget {
       {'ar': 'تعيين مرضى للطلاب', 'en': 'Assign Patients to Students'},
     ];
     // Detect language (you can adjust this logic as needed)
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final isArabic = Localizations.localeOf(parentContext).languageCode == 'ar';
 
     double sidebarWidth = collapsed ? 60 : 260;
     if (MediaQuery.of(context).size.width < 700 && !collapsed) {
@@ -152,6 +153,14 @@ class DoctorSidebar extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => PrescriptionPage(isArabic: isArabic)),
               );
             }),
+        
+            _buildSidebarItem(context, icon: Icons.medical_information, label: isArabic ? 'نموذج الإجراءات السريرية' : 'Clinical Procedures Form', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (_) => ClinicalProceduresForm(uid: userName ?? "")),
+              );
+            }),
             _buildSidebarItem(context, icon: Icons.wb_iridescent, label: isArabic ? 'طلب أشعة' : 'Radiology Request', onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -159,13 +168,13 @@ class DoctorSidebar extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const DoctorXrayRequestPage()),
               );
             }),
-            _buildSidebarItem(context, icon: Icons.assignment_ind, label: translate(context, 'assign_patients_to_students'), onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
+            _buildSidebarItem(context, icon: Icons.assignment_ind, label: isArabic ? 'تعيين مرضى للطلاب' : 'Assign Patients to Students', onTap: () {
+            Navigator.pop(context);
+            Navigator.push(
                 parentContext,
                 MaterialPageRoute(builder: (_) => const AssignPatientsToStudentPage()),
-              );
-            }),
+            );
+        }),
           ],
         ),
       ),

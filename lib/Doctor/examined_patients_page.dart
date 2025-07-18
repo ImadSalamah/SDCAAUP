@@ -1,4 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -37,10 +36,36 @@ class ExaminedPatientsPage extends StatefulWidget {
 }
 
 class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
+  // دالة لجلب جميع الإجراءات السريرية للمريض من قاعدة البيانات
+  Future<List<Map<String, dynamic>>> _getClinicalProceduresForPatient(String? patientId) async {
+    if (patientId == null || patientId.isEmpty) return [];
+    final ref = FirebaseDatabase.instance.ref('clinical_procedures');
+    final snapshot = await ref.get();
+    if (!snapshot.exists) return [];
+    final data = snapshot.value as Map<dynamic, dynamic>?;
+    if (data == null) return [];
+    final List<Map<String, dynamic>> procedures = [];
+    for (final entry in data.entries) {
+      final value = entry.value;
+      if (value is Map<dynamic, dynamic>) {
+        final map = Map<String, dynamic>.from(value);
+        if (map['patientId']?.toString() == patientId) {
+          procedures.add(map);
+        }
+      }
+    }
+    // ترتيب الإجراءات من الأحدث إلى الأقدم حسب تاريخ الإنشاء
+    procedures.sort((a, b) {
+      final aTime = a['createdAt'] is String ? DateTime.tryParse(a['createdAt'])?.millisecondsSinceEpoch ?? 0 : 0;
+      final bTime = b['createdAt'] is String ? DateTime.tryParse(b['createdAt'])?.millisecondsSinceEpoch ?? 0 : 0;
+      return bTime.compareTo(aTime);
+    });
+    return procedures;
+  }
   // تعريف الألوان
   static const Color primaryColor = Color(0xFF2A7A94);
-  static const Color backgroundColor = Colors.white;
-  static const Color cardColor = Colors.white;
+  static const Color backgroundColor = Color(0xFFF3F5F7); // رمادي فاتح للخلفية
+  static const Color cardColor = Colors.white; // البطاقات تبقى بيضاء
   static const Color textPrimary = Color(0xFF333333);
   static const Color textSecondary = Color(0xFF666666);
   static const Color borderColor = Color(0xFFEEEEEE);
@@ -244,6 +269,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
               final DataSnapshot doctorSnapshot = await _doctorsRef.child(doctorId).get();
               if (doctorSnapshot.exists) {
                 doctorData = safeConvertMap(doctorSnapshot.value);
+                // ignore: use_build_context_synchronously
                 doctorData['name'] = doctorData['fullName'] ?? _translate(context, 'unknown');
               }
             }
@@ -648,9 +674,77 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                           safeConvertMap(examData['dentalChart']), context),
                     ),
                 ],
-                // إضافة كارد صورة الأشعة بعد كل بيانات الفحص
+                // إضافة جدول clinical procedures قبل صورة الأشعة
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _getClinicalProceduresForPatient(patient['id']?.toString()),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final procedures = snapshot.data;
+                    if (procedures == null || procedures.isEmpty) {
+                      return const Card(
+                        margin: EdgeInsets.all(16),
+                        color: cardColor,
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text('لا توجد إجراءات سريرية مسجلة لهذا المريض', style: TextStyle(color: errorColor)),
+                        ),
+                      );
+                    }
+                    return SizedBox(
+                      width: double.infinity,
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                        color: cardColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: borderColor, width: 1),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Clinical Procedures', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 12),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: DataTable(
+                                  columns: const [
+                                    DataColumn(label: Text('Date')),
+                                    DataColumn(label: Text('Type')),
+                                    DataColumn(label: Text('Tooth No.')),
+                                    DataColumn(label: Text('Clinic')),
+                                    DataColumn(label: Text('Student')),
+                                    DataColumn(label: Text('Supervisor')),
+                                    DataColumn(label: Text('Second Visit')),
+                                  ],
+                                  rows: procedures.map((proc) => DataRow(cells: [
+                                    DataCell(Text(proc['dateOfOperation'] ?? '')),
+                                    DataCell(Text(proc['typeOfOperation'] ?? '')),
+                                    DataCell(Text(proc['toothNo'] ?? '')),
+                                    DataCell(Text(proc['clinicName'] ?? '')),
+                                    DataCell(Text(proc['studentName'] ?? '')),
+                                    DataCell(Text(proc['supervisorName'] ?? '')),
+                                    DataCell(Text(proc['dateOfSecondVisit'] ?? '')),
+                                  ])).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // إضافة كارد صورة الأشعة بعد جدول الإجراءات
                 _buildXrayImageCard(patientExam, context),
-              ],
+  // دالة لجلب جميع الإجراءات السريرية للمريض من قاعدة البيانات
+ ],
             ),
           ),
         ),
@@ -692,6 +786,9 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
     final pdf = pw.Document();
     final dentalChart = safeConvertMap(examData['dentalChart']);
     final isArabic = !Provider.of<LanguageProvider>(context, listen: false).isEnglish;
+
+    // جلب الإجراءات السريرية
+    final clinicalProcedures = await _getClinicalProceduresForPatient(patient['id']?.toString());
 
     // تحميل خط عربي من المسار الصحيح
     final fontData = await rootBundle.load('assets/Cairo-Regular.ttf');
@@ -812,6 +909,38 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                   _smartText('${isArabic ? 'سن' : 'Tooth'} ${entry.key} - ${entry.value}', style()),
               ],
             ],
+          ],
+          if (clinicalProcedures.isNotEmpty) ...[
+            pw.SizedBox(height: 12),
+            _smartText(isArabic ? 'الإجراءات السريرية:' : 'Clinical Procedures:', style(18, true)),
+            pw.Table(
+              border: pw.TableBorder.all(),
+              defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
+              children: [
+            pw.TableRow(
+              children: [
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(isArabic ? 'التاريخ' : 'Date', style: style(12, true))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(isArabic ? 'النوع' : 'Type', style: style(12, true))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(isArabic ? 'رقم السن' : 'Tooth No.', style: style(12, true))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(isArabic ? 'العيادة' : 'Clinic', style: style(12, true))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(isArabic ? 'الطالب' : 'Student', style: style(12, true))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(isArabic ? 'المشرف' : 'Supervisor', style: style(12, true))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(isArabic ? 'زيارة ثانية' : 'Second Visit', style: style(12, true))),
+              ],
+            ),
+            ...clinicalProcedures.map((proc) => pw.TableRow(
+              children: [
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(proc['dateOfOperation']?.toString() ?? '', style: style(12))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(proc['typeOfOperation']?.toString() ?? '', style: style(12))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(proc['toothNo']?.toString() ?? '', style: style(12))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(proc['clinicName']?.toString() ?? '', style: style(12))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: _smartText(proc['studentName']?.toString() ?? '', style(12))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: _smartText(proc['supervisorName']?.toString() ?? '', style(12))),
+                pw.Padding(padding: const pw.EdgeInsets.all(4), child: pw.Text(proc['dateOfSecondVisit']?.toString() ?? '', style: style(12))),
+              ],
+            )),
+              ],
+            ),
           ],
         ],
       ),
@@ -971,7 +1100,23 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(8.0),
-                        child: imageWidget,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 8.0),
+                              child: Text(
+                                "صور الأشعة",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                            ),
+                            imageWidget,
+                          ],
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
