@@ -756,6 +756,7 @@ Colors.white.withAlpha(179),
                                       ),
                                     const SizedBox(height: 20),
                                     TextFormField(
+                                      key: const Key('password_field'),
                                       controller: _passwordController,
                                       obscureText: _obscurePassword,
                                       decoration: InputDecoration(
@@ -859,6 +860,7 @@ Colors.white.withAlpha(179),
                                     SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
+                                        key: const Key('login_button'),
                                         onPressed: _isLoading
                                             ? null
                                             : () => _handleLogin(context),
