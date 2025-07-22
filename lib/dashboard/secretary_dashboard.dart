@@ -31,8 +31,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
   }) {
     final width = MediaQuery.of(context).size.width;
     final isSmallScreen = width < 350;
-    final isTablet = width >= 600 && width <= 900;
-    final isWide = width > 900;
+    final isTablet = width >= 600;
 
     return Material(
       borderRadius: BorderRadius.circular(15),
@@ -53,18 +52,18 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                   Container(
                     padding: EdgeInsets.all(isTablet ? 18 : 12),
                     decoration: BoxDecoration(
-                     color: color.withAlpha(25), 
+                      color: color.withAlpha(25),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       icon,
                       size: isSmallScreen
                           ? 24
-                          : (isWide ? 40 : (isTablet ? 40 : 30)),
+                          : (isTablet ? 40 : 30),
                       color: color,
                     ),
                   ),
-                  SizedBox(height: isWide ? 16 : (isTablet ? 16 : 8)),
+                  SizedBox(height: isTablet ? 16 : 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
@@ -72,7 +71,7 @@ class _SecretaryDashboardState extends State<SecretaryDashboard> {
                       style: TextStyle(
                         fontSize: isSmallScreen
                             ? 14
-                            : (isWide ? 18 : (isTablet ? 18 : 16)),
+                            : (isTablet ? 18 : 16),
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),

@@ -25,6 +25,7 @@ class PendingPatientPage extends StatefulWidget {
 class _PendingPatientPageState extends State<PendingPatientPage> {
   String? _localImageBase64; // لمعاينة الصورة الجديدة
   bool _isUploading = false;
+  bool _editSaved = false;
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +337,7 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _isUploading ? null : () async {
+                          onPressed: (_isUploading || _editSaved) ? null : () async {
                             setState(() { _isUploading = true; });
                             final dbRef = FirebaseDatabase.instance.ref();
                             final updatedData = {
@@ -350,18 +351,27 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
                               'phone': phoneController.text.trim(),
                               'address': addressController.text.trim(),
                               'email': emailController.text.trim(),
-                              // إذا تم اختيار صورة جديدة، ارفعها، وإلا الصورة القديمة
                               'image': (_localImageBase64 != null && fieldsToEdit.contains('image')) ? _localImageBase64!.trim() : userData['image'],
+                              // إعادة المستخدم إلى قائمة السكرتيرة بعد التعديل
+                              'editedAfterRejection': null,
+                              'fieldsToEdit': [],
+                              // حذف سبب الرفض
+                              'rejectionReason': null,
                             };
                             await dbRef.child('pendingUsers/$uid').update(updatedData);
-                            setState(() { _isUploading = false; });
-                            // ignore: use_build_context_synchronously
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('تم حفظ التعديلات بنجاح')),
-                            );
+                            setState(() {
+                              _isUploading = false;
+                              _editSaved = true;
+                            });
+                            if (mounted) {
+                              // ignore: use_build_context_synchronously
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('تم حفظ التعديلات بنجاح')),
+                              );
+                            }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange[700],
+                            backgroundColor: _editSaved ? Colors.green : Colors.orange[700],
                             padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -369,7 +379,10 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
                           ),
                           child: _isUploading
                               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text('حفظ التعديلات', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                              : Text(
+                                  _editSaved ? 'تم التعديل' : 'حفظ التعديلات',
+                                  style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
                         ),
                       ),
                     const SizedBox(height: 16),

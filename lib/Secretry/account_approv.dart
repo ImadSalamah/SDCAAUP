@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import '../../providers/language_provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'dart:convert';
@@ -21,6 +22,28 @@ class AccountApprovalPage extends StatefulWidget {
 }
 
 class AccountApprovalPageState extends State<AccountApprovalPage> {
+  // دالة إرسال الإيميل عبر السيرفر Flask
+  Future<void> sendEmailToUser({
+    required String email,
+    required String fullName,
+    required String status, // "approved" or "rejected"
+    String? reason,
+  }) async {
+    final url = Uri.parse('http://127.0.0.1:5000/send-email');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'full_name': fullName,
+        'status': status,
+        if (reason != null) 'reason': reason,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to send email: ${response.body}');
+    }
+  }
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   List<Map<String, dynamic>> _pendingUsers = [];
@@ -146,6 +169,8 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         try {
           final userData =
               Map<String, dynamic>.from(value as Map<dynamic, dynamic>);
+          // تجاهل المستخدمين الذين عدلوا بعد الرفض
+          if (userData['editedAfterRejection'] == true) return;
           userData['userId'] = key.toString();
           usersList.add(userData);
         } catch (e) {
@@ -188,6 +213,17 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
 
       await _markNotificationAsRead(authUid);
 
+      // إرسال إيميل الموافقة
+      try {
+        await sendEmailToUser(
+          email: userData['email'],
+          fullName: '${userData['firstName'] ?? ''} ${userData['familyName'] ?? ''}',
+          status: 'approved',
+        );
+      } catch (e) {
+          debugPrint('Email send error: ${e.toString()}');
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_translate('approval_success'))),
@@ -225,6 +261,18 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
       }
 
       await _markNotificationAsRead(authUid);
+
+      // إرسال إيميل الرفض
+      try {
+        await sendEmailToUser(
+          email: userData['email'],
+          fullName: '${userData['firstName'] ?? ''} ${userData['familyName'] ?? ''}',
+          status: 'rejected',
+          reason: reason,
+        );
+      } catch (e) {
+          debugPrint('Email send error: ${e.toString()}');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -413,6 +461,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
       'image': _translate('profile_image'),
     };
 
+    final bool isRejected = user['rejectionReason'] != null && user['rejectionReason'].toString().isNotEmpty;
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -421,13 +470,37 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _translate('user_info'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: primaryColor,
-              ),
+            Row(
+              children: [
+                Text(
+                  _translate('user_info'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+                if (isRejected) ...[
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.error, color: Colors.red, size: 18),
+                        SizedBox(width: 4),
+                        Text(
+                          'مرفوض',
+                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
+              ],
             ),
             const SizedBox(height: 16),
             Center(

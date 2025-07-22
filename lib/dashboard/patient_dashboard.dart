@@ -872,8 +872,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
   ) {
     final width = MediaQuery.of(context).size.width;
     final isSmallScreen = width < 350;
-    final isTablet = width >= 600 && width <= 900;
-    final isWide = width > 900;
+    final isTablet = width >= 600;
 
     return Material(
       borderRadius: BorderRadius.circular(15),
@@ -899,11 +898,11 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   icon,
                   size: isSmallScreen
                       ? 24
-                      : (isWide ? 40 : (isTablet ? 40 : 30)),
+                      : (isTablet ? 40 : 30),
                   color: color,
                 ),
               ),
-              SizedBox(height: isWide ? 16 : (isTablet ? 16 : 8)),
+              SizedBox(height: isTablet ? 16 : 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
@@ -911,7 +910,7 @@ class _PatientDashboardState extends State<PatientDashboard> {
                   style: TextStyle(
                     fontSize: isSmallScreen
                         ? 14
-                        : (isWide ? 18 : (isTablet ? 18 : 16)),
+                        : (isTablet ? 18 : 16),
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
