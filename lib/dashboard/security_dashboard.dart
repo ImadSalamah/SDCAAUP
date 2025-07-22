@@ -431,7 +431,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                               ? CircleAvatar(
                                   radius: isSmallScreen ? 28 : 36, // قللنا قليلاً
                                   backgroundColor:
-                                     Colors.white.withValues(),
+                                     Colors.white..withAlpha(204),
 
                                   child: ClipOval(
                                     child: Image.memory(
