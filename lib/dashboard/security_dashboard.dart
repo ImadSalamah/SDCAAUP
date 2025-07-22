@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, duplicate_ignore
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -160,6 +162,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
         _hasError = true;
       });
 
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_translate(context, 'error_loading_data')),
@@ -251,6 +254,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
 
     return Directionality(
       textDirection: _isArabic(context) ? TextDirection.rtl : TextDirection.ltr,
+      // ignore: deprecated_member_use
       child: WillPopScope(
         onWillPop: () async {
           ScaffoldMessenger.of(context).clearMaterialBanners();
@@ -427,7 +431,8 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                               ? CircleAvatar(
                                   radius: isSmallScreen ? 28 : 36, // قللنا قليلاً
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.8),
+                                     Colors.white.withValues(),
+
                                   child: ClipOval(
                                     child: Image.memory(
                                       base64Decode(_userImageUrl.replaceFirst(
@@ -441,7 +446,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                               : CircleAvatar(
                                   radius: isSmallScreen ? 28 : 36,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.8),
+                                      Colors.white.withAlpha(204),
                                   child: Icon(
                                     Icons.person,
                                     size: isSmallScreen ? 28 : 36,
@@ -559,9 +564,9 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
     final double iconSize = isSmallScreen ? 20 : (isWide ? 34 : (isTablet ? 28 : 26));
     final double fontSize = isSmallScreen ? 12 : (isWide ? 16 : (isTablet ? 14 : 13));
     final double boxPadding = isWide ? 12 : (isTablet ? 10 : 8);
-    final double boxRadius = 16;
-    final double boxElevation = 3;
-    final double spacing = 10;
+    const double boxRadius = 16;
+    const double boxElevation = 3;
+    const double spacing = 10;
 
     return Material(
       elevation: boxElevation,
@@ -581,7 +586,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
               Container(
                 padding: EdgeInsets.all(boxPadding),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withAlpha(25),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -590,7 +595,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                   color: color,
                 ),
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
               Text(
                 title,
                 style: TextStyle(
