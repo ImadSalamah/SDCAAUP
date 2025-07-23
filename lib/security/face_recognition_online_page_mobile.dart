@@ -16,6 +16,7 @@ class FaceRecognitionOnlinePage extends StatefulWidget {
 class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
+  int _selectedCameraIdx = 0;
   bool _isCameraInitialized = false;
   List<Map<String, dynamic>> _detectedFaces = [];
   String _rawJson = '';
@@ -26,9 +27,9 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
     _initMobileCamera();
   }
 
-  Future<void> _initMobileCamera() async {
+  Future<void> _initMobileCamera([int cameraIdx = 0]) async {
     try {
-      _cameras = await availableCameras();
+      _cameras ??= await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
         setState(() {
           _detectedFaces = [
@@ -37,9 +38,13 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
         });
         return;
       }
+      _selectedCameraIdx = cameraIdx;
+      _cameraController?.dispose();
       _cameraController = CameraController(
-          _cameras![0], ResolutionPreset.medium,
-          enableAudio: false);
+        _cameras![cameraIdx],
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
       await _cameraController!.initialize();
       setState(() {
         _isCameraInitialized = true;
@@ -52,6 +57,15 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
         ];
       });
     }
+  }
+
+  void _switchCamera() async {
+    if (_cameras == null || _cameras!.length < 2) return;
+    final nextIdx = (_selectedCameraIdx + 1) % _cameras!.length;
+    setState(() {
+      _isCameraInitialized = false;
+    });
+    await _initMobileCamera(nextIdx);
   }
 
   void _startMobileFrameStream() {
@@ -79,7 +93,7 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
 
   Future<void> _sendToApi(String base64Image) async {
     final response = await http.post(
-      Uri.parse('https://recproj.fly.dev/recognize'),
+       Uri.parse('https://recproj.fly.dev/recognize'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'image': base64Image}),
     );
@@ -132,6 +146,14 @@ class _FaceRecognitionOnlinePageState extends State<FaceRecognitionOnlinePage> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          if (_cameras != null && _cameras!.length > 1)
+            IconButton(
+              icon: const Icon(Icons.cameraswitch, color: Colors.white),
+              tooltip: isArabic ? 'تبديل الكاميرا' : 'Switch Camera',
+              onPressed: _switchCamera,
+            ),
+        ],
       ),
       drawer: const SecuritySidebar(),
       body: Container(

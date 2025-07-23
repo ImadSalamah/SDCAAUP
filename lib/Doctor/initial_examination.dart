@@ -690,11 +690,16 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
         if (selectedCourseId != null) {
           // ignore: duplicate_ignore
           // ignore: use_build_context_synchronously
-          final assigned = await _assignPatientToStudentAuto(context, patientId, selectedCourseId);
+          final assignResult = await _assignPatientToStudentAuto(context, patientId, selectedCourseId, patientData: widget.patientData);
           if (!mounted) return;
-          if (assigned) {
+          if (assignResult is Map && assignResult['studentName'] != null && assignResult['courseLabel'] != null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم توزيع المريض تلقائيًا على الطالب الأقل حالات.')),
+              SnackBar(content: Text('تم توزيع المريض تلقائيًا على الطالب: ${assignResult['studentName']}\nالمادة: ${assignResult['courseLabel']}')),
+            );
+            Navigator.pop(context);
+          } else if (assignResult == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تم توزيع المريض تلقائيًا.')),
             );
             Navigator.pop(context);
           }
@@ -747,7 +752,7 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
   }
 
   // توزيع تلقائي: إيجاد الطالب الأقل حالات في المادة وإسناد المريض له
-  Future<bool> _assignPatientToStudentAuto(BuildContext context, String patientId, String subject) async {
+  Future<dynamic> _assignPatientToStudentAuto(BuildContext context, String patientId, String subject, {Map<String, dynamic>? patientData}) async {
     // جلب جميع الشعب التي تحتوي على نفس المادة (courseId)
     final studyGroupsSnap = await FirebaseDatabase.instance.ref('studyGroups').get();
     final studyGroups = studyGroupsSnap.value as Map<dynamic, dynamic>?;
@@ -803,7 +808,53 @@ class _InitialExaminationState extends State<InitialExamination> with SingleTick
       await FirebaseDatabase.instance.ref('student_patients').child(minStudentId).child(patientId).set(true);
       // ضبط allowNewCase=0 لهذا الطالب في هذه المادة
       await FirebaseDatabase.instance.ref('student_case_flags/$subject/$minStudentId').set(0);
-      return true;
+      // تجهيز اسم الطالب والمادة
+      String studentName = minStudentId;
+      String courseLabel = subject;
+      // جلب اسم الطالب
+      final studyGroupsSnap = await FirebaseDatabase.instance.ref('studyGroups').get();
+      final studyGroups = studyGroupsSnap.value as Map<dynamic, dynamic>?;
+      if (studyGroups != null) {
+        for (final entry in studyGroups.entries) {
+          final group = entry.value;
+          if (group is Map && group['courseId'] != null && group['courseId'].toString() == subject && group['students'] is Map) {
+            final studentsMap = group['students'] as Map;
+            if (studentsMap[minStudentId] is Map && studentsMap[minStudentId]['name'] != null) {
+              studentName = studentsMap[minStudentId]['name'].toString();
+            }
+            if (group['courseName'] != null && group['courseName'].toString().trim().isNotEmpty) {
+              courseLabel = group['courseName'].toString();
+            } else if (group['subject'] != null && group['subject'].toString().trim().isNotEmpty) {
+              courseLabel = group['subject'].toString();
+            }
+          }
+        }
+      }
+      // إرسال إشعار للطالب (الكود السابق يبقى كما هو)
+      try {
+        String patientName = patientId;
+        if (patientData != null) {
+          final p = patientData;
+          final firstName = (p['firstName'] ?? '').toString().trim();
+          final fatherName = (p['fatherName'] ?? '').toString().trim();
+          final grandFatherName = (p['grandfatherName'] ?? '').toString().trim();
+          final familyName = (p['familyName'] ?? '').toString().trim();
+          final fullName = [firstName, fatherName, grandFatherName, familyName].join(' ').replaceAll(RegExp(' +'), ' ').trim();
+          if (fullName.isNotEmpty) patientName = fullName;
+        }
+        final notification = {
+          'title': 'تم إسناد حالة جديدة لك',
+          'body': 'تم إسناد الحالة "$patientName" لمادة "$courseLabel". يرجى التعامل مع الحالة بأقرب وقت ممكن.',
+          'timestamp': ServerValue.timestamp,
+          'patientId': patientId,
+          'courseId': subject,
+        };
+        await FirebaseDatabase.instance.ref('student_notifications').child(minStudentId).push().set(notification);
+      } catch (e) {
+        debugPrint('Failed to send notification to student: $e');
+      }
+      // إرجاع اسم الطالب والمادة
+      return {'studentName': studentName, 'courseLabel': courseLabel};
     }
     return false;
   }

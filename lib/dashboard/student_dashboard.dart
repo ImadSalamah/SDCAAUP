@@ -78,8 +78,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
     final user = _auth.currentUser;
     if (user != null) {
       _userRef = FirebaseDatabase.instance.ref('users/${user.uid}');
+      // تعديل المسار ليكون student_notifications بدلاً من notifications
       _notificationsRef =
-          FirebaseDatabase.instance.ref('notifications/${user.uid}');
+          FirebaseDatabase.instance.ref('student_notifications/${user.uid}');
     }
   }
 
@@ -228,10 +229,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
   void _listenForNotifications() {
     final user = _auth.currentUser;
     if (user == null) return;
-    final notificationsRef = FirebaseDatabase.instance.ref('notifications/${user.uid}');
+    final notificationsRef = FirebaseDatabase.instance.ref('student_notifications/${user.uid}');
     notificationsRef.onChildAdded.listen((event) {
       final data = event.snapshot.value as Map?;
-      if (data != null && data['read'] == false) {
+      // إشعارات student_notifications لا تحتوي عادةً على حقل read، سنعرض كل إشعار جديد
+      if (data != null) {
         if (mounted) {
           setState(() {
             hasNewNotification = true;
@@ -239,8 +241,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
           String bannerMsg;
           if (data['title'] != null) {
             bannerMsg = data['title'].toString();
-            if (data['message'] != null && data['message'].toString().trim().isNotEmpty) {
-              bannerMsg += '\n${data['message']}';
+            if (data['body'] != null && data['body'].toString().trim().isNotEmpty) {
+              bannerMsg += '\n${data['body']}';
             }
           } else {
             bannerMsg = 'لديك إشعار جديد';
@@ -974,8 +976,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       return ListTile(
                         leading: const Icon(Icons.notifications),
                         title: Text(notification['title'] ?? ''),
-                        subtitle: Text(notification['message'] ?? ''),
-                        trailing: Text(notification['date'] ?? ''),
+                        subtitle: Text(notification['body'] ?? ''),
+                        trailing: notification['timestamp'] != null
+                            ? Text(_formatTimestamp(notification['timestamp']))
+                            : null,
                       );
                     },
                   ),
@@ -989,6 +993,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
         );
       },
     );
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    try {
+      final dt = DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp.toString()));
+      return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return '';
+    }
   }
 
   Widget _buildFeatureBox(
