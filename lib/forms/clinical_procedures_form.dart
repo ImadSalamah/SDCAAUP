@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import '../Doctor/doctor_sidebar.dart';
 
 
 class ClinicalProceduresForm extends StatefulWidget {
@@ -143,32 +144,18 @@ class _ClinicalProceduresFormState extends State<ClinicalProceduresForm> {
         title: const Text('Clinical Procedures Form', style: TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: primaryColor),
-              child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.of(context).pop();
-                // يمكنك إضافة التنقل هنا
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.of(context).pop();
-                // يمكنك إضافة التنقل هنا
-              },
-            ),
-          ],
-        ),
+      drawer: DoctorSidebar(
+        primaryColor: const Color(0xFF2A7A94),
+        accentColor: Colors.teal,
+        userName: _currentDoctorName ?? '',
+        userImageUrl: null,
+        onLogout: () {
+          // يمكنك تنفيذ تسجيل الخروج هنا
+        },
+        parentContext: context,
+        collapsed: false,
+        translate: (ctx, txt) => txt,
+        doctorUid: widget.uid,
       ),
       body: Container(
         color: primaryColor.withAlpha(15),

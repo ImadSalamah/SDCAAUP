@@ -588,6 +588,7 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
                   userImageUrl: _doctorImageUrl,
                   translate: (ctx, key) => key,
                   parentContext: context,
+                  doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
                 )),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -1292,6 +1293,20 @@ class _ExaminedPatientsPageState extends State<ExaminedPatientsPage> {
         ],
       ),
       backgroundColor: backgroundColor,
+      drawer: (_userRole == 'dental_student'
+          ? StudentSidebar(
+              studentName: _doctorName,
+              studentImageUrl: _doctorImageUrl,
+            )
+          : DoctorSidebar(
+              primaryColor: primaryColor,
+              accentColor: const Color(0xFF4AB8D8),
+              userName: _doctorName ?? '',
+              userImageUrl: _doctorImageUrl,
+              translate: (ctx, key) => key,
+              parentContext: context,
+              doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
+            )),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _hasError

@@ -19,6 +19,7 @@ class DoctorSidebar extends StatelessWidget {
   final BuildContext parentContext;
   final bool collapsed;
   final String Function(BuildContext, String) translate;
+  final String doctorUid;
 
   const DoctorSidebar({
     super.key,
@@ -30,6 +31,7 @@ class DoctorSidebar extends StatelessWidget {
     required this.parentContext,
     this.collapsed = false,
     required this.translate,
+    required this.doctorUid,
   });
 
   @override
@@ -158,7 +160,7 @@ class DoctorSidebar extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(
                 parentContext,
-                MaterialPageRoute(builder: (_) => ClinicalProceduresForm(uid: userName ?? "")),
+                MaterialPageRoute(builder: (_) => ClinicalProceduresForm(uid: doctorUid)),
               );
             }),
             _buildSidebarItem(context, icon: Icons.wb_iridescent, label: isArabic ? 'طلب أشعة' : 'Radiology Request', onTap: () {

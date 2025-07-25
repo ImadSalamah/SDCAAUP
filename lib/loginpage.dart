@@ -216,15 +216,34 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final patientData = await _checkUserExists(email);
+    // تحقق إذا كان في users
+    Map<dynamic, dynamic>? patientData = await _checkUserExists(email);
+    bool isRejected = false;
+    bool foundInRejected = false;
+
     if (patientData == null) {
-      throw FirebaseAuthException(
-        code: 'user-not-found',
-        message: _translate(navigatorKey.currentContext!, 'no_patient_account'),
-      );
+      // إذا لم يوجد في users، تحقق في rejectedUsers
+      final rejectedSnapshot = await _dbRef
+          .child('rejectedUsers')
+          .orderByChild('email')
+          .equalTo(email)
+          .once();
+      if (rejectedSnapshot.snapshot.value != null) {
+        patientData = (rejectedSnapshot.snapshot.value as Map<dynamic, dynamic>).values.first;
+        isRejected = true;
+        foundInRejected = true;
+      } else {
+        throw FirebaseAuthException(
+          code: 'user-not-found',
+          message: _translate(navigatorKey.currentContext!, 'no_patient_account'),
+        );
+      }
+    } else {
+      // إذا كان في users
+      isRejected = (patientData['status']?.toString() == 'rejected' || patientData['isActive'] == false);
     }
 
-    if (patientData['role']?.toString().toLowerCase() != 'patient') {
+    if (patientData == null || patientData['role']?.toString().toLowerCase() != 'patient') {
       throw FirebaseAuthException(
         code: 'wrong-account-type',
         message: languageProvider.isEnglish
@@ -234,6 +253,18 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+    if (isRejected || foundInRejected) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PendingPatientPage(),
+          settings: RouteSettings(arguments: email),
+        ),
+      );
+      return;
+    }
 
     final recheckPatientData = await _checkUserExists(email);
     if (recheckPatientData == null) {

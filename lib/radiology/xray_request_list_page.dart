@@ -401,7 +401,7 @@ class _XrayUploadPageState extends State<XrayUploadPage> {
   Future<Map<String, dynamic>?> fetchAnalyzedXray(String base64Image) async {
     // عدل الرابط حسب عنوان السيرفر الفعلي
      const String apiUrl = 'https://xraymodel.fly.dev/analyze';
-    //const String apiUrl = 'http://192.168.1.106:8080/analyze';
+   // const String apiUrl = 'http://192.168.1.108:8080/analyze';
     try {
       // فك تشفير base64 إلى bytes
       final imageBytes = base64Decode(base64Image);

@@ -244,6 +244,7 @@ class _DoctorPendingCasesPageState extends State<DoctorPendingCasesPage> {
         collapsed: false, // Always show labels (expanded)
         onLogout: logout,
         parentContext: context,
+        doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
       ),
       body: Padding(
         padding: const EdgeInsets.only(right: 0),

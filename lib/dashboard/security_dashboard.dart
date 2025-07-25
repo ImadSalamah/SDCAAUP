@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -559,9 +561,9 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
     final double iconSize = isSmallScreen ? 20 : (isWide ? 34 : (isTablet ? 28 : 26));
     final double fontSize = isSmallScreen ? 12 : (isWide ? 16 : (isTablet ? 14 : 13));
     final double boxPadding = isWide ? 12 : (isTablet ? 10 : 8);
-    final double boxRadius = 16;
-    final double boxElevation = 3;
-    final double spacing = 10;
+    const double boxRadius = 16;
+    const double boxElevation = 3;
+    const double spacing = 10;
 
     return Material(
       elevation: boxElevation,
@@ -590,7 +592,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                   color: color,
                 ),
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
               Text(
                 title,
                 style: TextStyle(

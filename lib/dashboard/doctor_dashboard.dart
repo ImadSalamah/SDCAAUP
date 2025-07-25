@@ -385,6 +385,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                 onLogout: _signOut,
                 parentContext: context,
                 translate: _translate,
+                doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
               )
             : null,
         body: Stack(
@@ -403,6 +404,7 @@ class _SupervisorDashboardState extends State<SupervisorDashboard> {
                     parentContext: context,
                     collapsed: false,
                     translate: _translate,
+                    doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
                   ),
                 ),
               ),

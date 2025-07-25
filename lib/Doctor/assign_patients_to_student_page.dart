@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'doctor_sidebar.dart';
+
 class AssignPatientsToStudentPage extends StatefulWidget {
   const AssignPatientsToStudentPage({super.key});
 
@@ -132,6 +135,16 @@ class _AssignPatientsToStudentPageState extends State<AssignPatientsToStudentPag
       ),
       child: Scaffold(
         appBar: AppBar(title: const Text('تعيين المرضى للطالب'), backgroundColor: primaryColor),
+        drawer: DoctorSidebar(
+          primaryColor: primaryColor,
+          accentColor: Colors.green.shade400,
+          userName: '',
+          userImageUrl: null,
+          parentContext: context,
+          collapsed: false,
+          translate: (ctx, key) => key,
+          doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
+        ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Padding(

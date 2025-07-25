@@ -47,7 +47,9 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   List<Map<String, dynamic>> _pendingUsers = [];
+  List<Map<String, dynamic>> _rejectedUsers = [];
   bool _isLoading = true;
+  bool _isRejectedLoading = false;
   final String _userName = '';
   final String _userImageUrl = '';
   Uint8List? _userImageBytes;
@@ -108,6 +110,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     super.initState();
     _loadSecretaryData(); // استخدم الدالة الموجودة فعلياً
     _loadPendingUsers();
+    _loadRejectedUsers();
     // إذا تم تمرير initialUserId من الإشعار، انتقل مباشرة لتفاصيل هذا الحساب
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialUserId != null) {
@@ -120,6 +123,48 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
         }
       }
     });
+  }
+  Future<void> _loadRejectedUsers() async {
+    try {
+      setState(() => _isRejectedLoading = true);
+      final snapshot = await _database.child('rejectedUsers').once();
+      if (snapshot.snapshot.value == null) {
+        if (mounted) {
+          setState(() {
+            _rejectedUsers = [];
+            _isRejectedLoading = false;
+          });
+        }
+        return;
+      }
+      final usersMap = snapshot.snapshot.value as Map<dynamic, dynamic>? ?? {};
+      final usersList = <Map<String, dynamic>>[];
+      usersMap.forEach((key, value) {
+        try {
+          final userData = Map<String, dynamic>.from(value as Map<dynamic, dynamic>);
+          // تجاهل المستخدمين الذين عدلوا بعد الرفض
+          if (userData['editedAfterRejection'] == true) return;
+          userData['userId'] = key.toString();
+          usersList.add(userData);
+        } catch (e) {
+          debugPrint('Error parsing rejected user data: $e');
+        }
+      });
+      if (mounted) {
+        setState(() {
+          _rejectedUsers = usersList;
+          _isRejectedLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading rejected users: $e');
+      if (mounted) {
+        setState(() => _isRejectedLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${_translate('error')}: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   @override
@@ -229,6 +274,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           SnackBar(content: Text(_translate('approval_success'))),
         );
         _loadPendingUsers();
+        _loadRejectedUsers();
       }
     } catch (e) {
       debugPrint('Error approving user: $e');
@@ -251,12 +297,14 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
       }
 
       await _database.child('pendingAccounts/$userId').remove();
+      await _database.child('pendingUsers/$userId').remove();
 
       if (reason != null && reason.isNotEmpty) {
         await _database.child('rejectedUsers/$userId').set({
           ...userData,
           'rejectionReason': reason,
           'rejectedAt': ServerValue.timestamp,
+          'editedAfterRejection': false,
         });
       }
 
@@ -279,6 +327,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           SnackBar(content: Text(_translate('rejection_success'))),
         );
         _loadPendingUsers();
+        _loadRejectedUsers();
       }
     } catch (e) {
       debugPrint('Error rejecting user: $e');
@@ -314,6 +363,7 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
           SnackBar(content: Text(_translate('rejection_success'))),
         );
         _loadPendingUsers();
+        _loadRejectedUsers();
       }
     } catch (e) {
       debugPrint('Error rejecting user with fields: $e');
@@ -782,50 +832,165 @@ class AccountApprovalPageState extends State<AccountApprovalPage> {
     return Directionality(
       textDirection:
           languageProvider.isEnglish ? TextDirection.ltr : TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Colors.grey[100],
-        appBar: AppBar(
-          title: Text(_translate('approval_title')),
-          backgroundColor: primaryColor,
-          foregroundColor: Colors.white,
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          backgroundColor: Colors.grey[100],
+          appBar: AppBar(
+            title: Text(_translate('approval_title')),
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            bottom: TabBar(
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              indicatorColor: accentColor,
+              tabs: [
+                Tab(text: languageProvider.isEnglish ? 'Pending Accounts' : 'الحسابات المعلقة'),
+                Tab(text: languageProvider.isEnglish ? 'Rejected Accounts' : 'الحسابات المرفوضة'),
+              ],
+            ),
+          ),
+          drawer: SecretarySidebar(
+            primaryColor: primaryColor,
+            accentColor: accentColor,
+            userName: secretaryProvider.fullName,
+            userImageUrl: secretaryProvider.imageBase64,
+            onLogout: _logout,
+            parentContext: context,
+            collapsed: false,
+            translate: (ctx, key) => _translate(key),
+            pendingAccountsCount: _pendingUsers.length,
+            userRole: 'secretary',
+          ),
+          body: isLargeScreen
+              ? Row(
+                  children: [
+                    SecretarySidebar(
+                      primaryColor: primaryColor,
+                      accentColor: accentColor,
+                      userName: _userName.isNotEmpty ? _userName : null,
+                      userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : null,
+                      onLogout: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginPage()),
+                        );
+                      },
+                      parentContext: context,
+                      collapsed: false,
+                      translate: (ctx, key) => _translate(key),
+                      pendingAccountsCount: _pendingUsers.length,
+                      userRole: 'secretary',
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildMainContent(),
+                          _buildRejectedContent(),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              : TabBarView(
+                  children: [
+                    _buildMainContent(),
+                    _buildRejectedContent(),
+                  ],
+                ),
         ),
-        drawer: SecretarySidebar(
-          primaryColor: primaryColor,
-          accentColor: accentColor,
-          userName: secretaryProvider.fullName,
-          userImageUrl: secretaryProvider.imageBase64,
-          onLogout: _logout,
-          parentContext: context,
-          collapsed: false,
-          translate: (ctx, key) => _translate(key),
-          pendingAccountsCount: _pendingUsers.length,
-          userRole: 'secretary',
-        ),
-        body: isLargeScreen
-            ? Row(
-                children: [
-                  SecretarySidebar(
-                    primaryColor: primaryColor,
-                    accentColor: accentColor,
-                    userName: _userName.isNotEmpty ? _userName : null,
-                    userImageUrl: (_userImageUrl.isNotEmpty && _userImageBytes != null) ? _userImageUrl : null,
-                    onLogout: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginPage()),
-                      );
-                    },
-                    parentContext: context,
-                    collapsed: false,
-                    translate: (ctx, key) => _translate(key),
-                    pendingAccountsCount: _pendingUsers.length,
-                    userRole: 'secretary',
-                  ),
-                  Expanded(child: _buildMainContent()),
-                ],
-              )
-            : _buildMainContent(),
       ),
+    );
+  }
+  Widget _buildRejectedContent() {
+    if (_isRejectedLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_rejectedUsers.isEmpty) {
+      return Center(
+        child: Text(
+          Provider.of<LanguageProvider>(context).isEnglish
+              ? 'No rejected accounts'
+              : 'لا يوجد حسابات مرفوضة',
+          style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _rejectedUsers.length,
+      itemBuilder: (context, index) {
+        final user = _rejectedUsers[index];
+        return Card(
+          elevation: 4,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      _translate('user_info'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error, color: Colors.red, size: 18),
+                          const SizedBox(width: 4),
+                          Text(
+                            Provider.of<LanguageProvider>(context).isEnglish ? 'Rejected' : 'مرفوض',
+                            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        _translate('profile_image'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildUserImage(user['image']),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildUserInfoRow(label: _translate('full_name'), value: '${user['firstName'] ?? ''} ${user['fatherName'] ?? ''} ${user['grandfatherName'] ?? ''} ${user['familyName'] ?? ''}'),
+                _buildUserInfoRow(label: _translate('id_number'), value: user['idNumber']?.toString() ?? _translate('not_available')),
+                _buildUserInfoRow(label: _translate('birth_date'), value: _formatBirthDate(user['birthDate'], Provider.of<LanguageProvider>(context).isEnglish)),
+                _buildUserInfoRow(label: _translate('gender'), value: user['gender']?.toString() ?? _translate('not_available')),
+                _buildUserInfoRow(label: _translate('phone'), value: user['phone']?.toString() ?? _translate('not_available')),
+                _buildUserInfoRow(label: _translate('address'), value: user['address']?.toString() ?? _translate('not_available')),
+                _buildUserInfoRow(label: _translate('email'), value: user['email']?.toString() ?? _translate('not_available')),
+                const SizedBox(height: 12),
+                if (user['rejectionReason'] != null && user['rejectionReason'].toString().isNotEmpty)
+                  _buildUserInfoRow(label: _translate('rejection_reason'), value: user['rejectionReason'].toString()),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

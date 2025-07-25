@@ -6,10 +6,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../providers/language_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../loginpage.dart';
 import '../Student/student_groups_page.dart';
 import '../Student/student_appointments_page.dart';
-import '../notifications_page.dart';
 import '../Doctor/examined_patients_page.dart';
 
 class StudentDashboard extends StatefulWidget {
@@ -36,6 +36,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   final int _maxRetries = 3;
 
   bool hasNewNotification = false;
+  String? _lastNotificationId; // لتتبع آخر إشعار تم عرضه كبانر
 
   final Map<String, Map<String, String>> _translations = {
     'student_dashboard': {'ar': 'لوحة الطالب', 'en': 'Student Dashboard'},
@@ -67,11 +68,18 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void initState() {
     super.initState();
-    // تم إزالة تعيين اللغة الافتراضية للإنجليزية عند فتح لوحة الطالب
-    _initializeReferences();
-    _setupRealtimeListener();
-    _loadData();
-    _listenForNotifications();
+    _loadLastNotificationId().then((_) {
+      _initializeReferences();
+      _setupRealtimeListener();
+      _loadData();
+      _listenForNotifications();
+    });
+
+  }
+
+  Future<void> _loadLastNotificationId() async {
+    final prefs = await SharedPreferences.getInstance();
+    _lastNotificationId = prefs.getString('lastNotificationId');
   }
 
   void _initializeReferences() {
@@ -116,12 +124,41 @@ class _StudentDashboardState extends State<StudentDashboard> {
     });
 
     // Listen for notifications
-    _notificationsRef.onValue.listen((event) {
+    _notificationsRef.onValue.listen((event) async {
       final snapshot = event.snapshot;
       if (snapshot.exists) {
+        final notifList = _parseSnapshot(snapshot);
         setState(() {
-          notifications = _parseSnapshot(snapshot);
+          notifications = notifList;
         });
+        // تحقق من وجود إشعار جديد لم يتم عرضه كبانر
+        if (notifList.isNotEmpty) {
+          final latest = notifList.last;
+          final latestId = latest['id']?.toString() ?? latest['timestamp']?.toString();
+          if (latestId != null && _lastNotificationId != latestId) {
+            setState(() {
+              hasNewNotification = true;
+              _lastNotificationId = latestId;
+            });
+            // حفظ آخر إشعار في SharedPreferences
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('lastNotificationId', latestId);
+            // عرض البانر لأول مرة فقط
+            String bannerMsg;
+            if (latest['title'] != null) {
+              bannerMsg = latest['title'].toString();
+              if (latest['body'] != null && latest['body'].toString().trim().isNotEmpty) {
+                bannerMsg += '\n${latest['body']}';
+              }
+            } else {
+              bannerMsg = 'لديك إشعار جديد';
+            }
+            showDashboardBanner(
+              bannerMsg,
+              backgroundColor: Colors.blue.shade700,
+            );
+          }
+        }
       }
     });
   }
@@ -214,46 +251,68 @@ class _StudentDashboardState extends State<StudentDashboard> {
     ScaffoldMessenger.of(context).clearMaterialBanners();
     ScaffoldMessenger.of(context).showMaterialBanner(
       MaterialBanner(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
-        backgroundColor: backgroundColor,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                // ignore: deprecated_member_use
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.notifications_active, color: Colors.white, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         actions: [
-          TextButton(
-            onPressed: () => ScaffoldMessenger.of(context).clearMaterialBanners(),
-            child: const Text('إغلاق', style: TextStyle(color: Colors.white)),
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0, bottom: 4.0),
+            child: TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                textStyle: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onPressed: () => ScaffoldMessenger.of(context).clearMaterialBanners(),
+              child: const Text('إغلاق'),
+            ),
           ),
         ],
+        forceActionsBelow: true,
       ),
     );
+    // إخفاء البانر تلقائياً بعد مدة محددة (مثلاً 3 ثوانٍ)
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearMaterialBanners();
+      }
+    });
   }
 
   void _listenForNotifications() {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    final notificationsRef = FirebaseDatabase.instance.ref('student_notifications/${user.uid}');
-    notificationsRef.onChildAdded.listen((event) {
-      final data = event.snapshot.value as Map?;
-      // إشعارات student_notifications لا تحتوي عادةً على حقل read، سنعرض كل إشعار جديد
-      if (data != null) {
-        if (mounted) {
-          setState(() {
-            hasNewNotification = true;
-          });
-          String bannerMsg;
-          if (data['title'] != null) {
-            bannerMsg = data['title'].toString();
-            if (data['body'] != null && data['body'].toString().trim().isNotEmpty) {
-              bannerMsg += '\n${data['body']}';
-            }
-          } else {
-            bannerMsg = 'لديك إشعار جديد';
-          }
-          showDashboardBanner(
-            bannerMsg,
-            backgroundColor: Colors.blue.shade700,
-          );
-        }
-      }
-    });
+    // لم يعد هناك حاجة لهذه الدالة مع المنطق الجديد
+    // كل شيء أصبح في _setupRealtimeListener
   }
 
   @override
@@ -298,10 +357,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                       setState(() {
                         hasNewNotification = false;
                       });
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const NotificationsPage()),
-                      );
+                      _showNotificationsDialog(context);
                     },
                   ),
                   if (hasNewNotification)

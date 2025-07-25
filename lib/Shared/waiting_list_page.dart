@@ -664,6 +664,7 @@ class _WaitingListPageState extends State<WaitingListPage> {
         parentContext: context,
         translate: _translate,
         onLogout: null,
+        doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
       );
     } else if (widget.userRole == 'secretary') {
       final secretaryProvider = Provider.of<SecretaryProvider>(context);

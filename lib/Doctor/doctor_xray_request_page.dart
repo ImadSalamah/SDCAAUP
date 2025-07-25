@@ -175,6 +175,7 @@ class _DoctorXrayRequestPageState extends State<DoctorXrayRequestPage> {
           parentContext: context,
           collapsed: false,
           translate: (ctx, key) => key,
+          doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
         ),
         appBar: AppBar(
           backgroundColor: primaryColor,

@@ -13,9 +13,17 @@ class PendingPatientPage extends StatefulWidget {
 
   static Future<Map<String, dynamic>?> getPendingUserDataByUid(String uid) async {
     final dbRef = FirebaseDatabase.instance.ref();
+    // جرب أولاً pendingUsers
     final snapshot = await dbRef.child('pendingUsers/$uid').get();
-    if (!snapshot.exists) return null;
-    return Map<String, dynamic>.from(snapshot.value as Map);
+    if (snapshot.exists) {
+      return Map<String, dynamic>.from(snapshot.value as Map);
+    }
+    // إذا لم يوجد في pendingUsers، جرب rejectedUsers
+    final rejectedSnapshot = await dbRef.child('rejectedUsers/$uid').get();
+    if (rejectedSnapshot.exists) {
+      return Map<String, dynamic>.from(rejectedSnapshot.value as Map);
+    }
+    return null;
   }
 
   @override
@@ -338,9 +346,16 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: (_isUploading || _editSaved) ? null : () async {
+                            if (uid.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('خطأ: لا يمكن تحديد حساب المستخدم. يرجى إعادة تسجيل الدخول.')),
+                              );
+                              return;
+                            }
                             setState(() { _isUploading = true; });
                             final dbRef = FirebaseDatabase.instance.ref();
                             final updatedData = {
+                              'authUid': uid,
                               'firstName': firstNameController.text.trim(),
                               'fatherName': fatherNameController.text.trim(),
                               'grandfatherName': grandfatherNameController.text.trim(),
@@ -358,13 +373,15 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
                               // حذف سبب الرفض
                               'rejectionReason': null,
                             };
+                            // نقل البيانات إلى pendingUsers
                             await dbRef.child('pendingUsers/$uid').update(updatedData);
+                            // حذف من rejectedUsers إذا كان موجودًا
+                            await dbRef.child('rejectedUsers/$uid').remove();
                             setState(() {
                               _isUploading = false;
                               _editSaved = true;
                             });
                             if (mounted) {
-                              // ignore: use_build_context_synchronously
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('تم حفظ التعديلات بنجاح')),
                               );

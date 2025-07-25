@@ -134,6 +134,7 @@ class _DoctorGroupsPageState extends State<DoctorGroupsPage> {
           translate: (ctx, key) => key,
           parentContext: context,
           collapsed: false, // السايدبار كامل
+          doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
           // إذا كان هناك خاصية لمحاذاة الأيقونات أو النصوص في DoctorSidebar أضفها هنا
         ),
       ),
@@ -293,50 +294,97 @@ class _GroupMarksPageState extends State<GroupMarksPage> {
     // تحديد رقم المادة
     final courseId = widget.group['courseId'] ?? widget.group['courseType'] ?? '080114140';
     final caseList = courseCases[courseId] ?? [];
+    const Color headerColor = Color(0xFF2A7A94);
+    const Color evenRowColor = Color(0xFFF5F8FA);
+    const Color oddRowColor = Colors.white;
+    const Color borderColor = Color(0xFFEEEEEE);
     return Scaffold(
       appBar: AppBar(
         title: Text('علامات الشعبة: ${widget.group['groupNumber'] ?? ''}'),
+        backgroundColor: headerColor,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: [
-                  const DataColumn(label: Text('الطالب')),
-                  ...caseList.map((t) => DataColumn(label: Text(_getCaseLabel(t)))),
-                ],
-                rows: _students.map((student) {
-                  final cases = student['cases'] as List<Map<String, dynamic>>;
-                  List<DataCell> cells = [
-                    DataCell(Text(student['name'] ?? '')),
-                  ];
-                  for (final t in caseList) {
-                    final type = t['type'] as String;
-                    final number = t['number'] as int;
-                    final caseData = findCase(cases, type, number);
-                    String mark = '-';
-                    if (caseData != null) {
-                      final status = caseData['status'];
-                      final m = caseData['doctorGrade'] ?? caseData['mark'] ?? caseData['grade'];
-                      if (status == 'graded' && m != null && m.toString().isNotEmpty) {
-                        mark = m.toString();
+              child: Container(
+                margin: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(16),
+                // إزالة خاصية width
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(headerColor),
+                    headingTextStyle: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    // ignore: deprecated_member_use
+                    dataRowHeight: 48,
+                    columns: [
+                      const DataColumn(
+                        label: Text('Student', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                      ...caseList.map((t) => DataColumn(
+                        label: Text(_getCaseLabel(t), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      )),
+                    ],
+                    rows: List.generate(_students.length, (index) {
+                      final student = _students[index];
+                      final cases = student['cases'] as List<Map<String, dynamic>>;
+                      List<DataCell> cells = [
+                        DataCell(Text(student['name'] ?? '', style: const TextStyle(fontSize: 15))),
+                      ];
+                      for (final t in caseList) {
+                        final type = t['type'] as String;
+                        final number = t['number'] as int;
+                        final caseData = findCase(cases, type, number);
+                        String mark = '-';
+                        if (caseData != null) {
+                          final status = caseData['status'];
+                          final m = caseData['doctorGrade'] ?? caseData['mark'] ?? caseData['grade'];
+                          if (status == 'graded' && m != null && m.toString().isNotEmpty) {
+                            mark = m.toString();
+                          }
+                        }
+                        cells.add(DataCell(Text(mark, style: const TextStyle(fontSize: 15))));
                       }
-                    }
-                    cells.add(DataCell(Text(mark)));
-                  }
-                  return DataRow(cells: cells);
-                }).toList(),
+                      return DataRow(
+                        color: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+                          // تلوين الصفوف بالتناوب
+                          return index % 2 == 0 ? evenRowColor : oddRowColor;
+                        }),
+                        cells: cells,
+                      );
+                    }),
+                    dividerThickness: 1,
+                    border: TableBorder.all(color: borderColor, width: 1),
+                  ),
+                ),
               ),
             ),
     );
   }
 
   String _getCaseLabel(Map<String, dynamic> t) {
-    if (t['type'] == 'history') return 'تاريخ وفحص #${t['number']}';
-    if (t['type'] == 'fissure') return 'سد شقوق #${t['number']}';
-    if (t['type'] == 'simpleSurgery') return 'حالة جراحية #${t['number']}';
-    // أضف أنواع أخرى هنا حسب الحاجة
+    if (t['type'] == 'history') return 'History & Exam #${t['number']}';
+    if (t['type'] == 'fissure') return 'Fissure Sealant #${t['number']}';
+    if (t['type'] == 'simpleSurgery') return 'Simple Surgery #${t['number']}';
+    // Add other types here as needed
     return '${t['type']} #${t['number']}';
   }
 }

@@ -209,6 +209,7 @@ class _PrescriptionPageState extends State<PrescriptionPage> {
         parentContext: context,
         collapsed: false,
         translate: (ctx, key) => key,
+        doctorUid: FirebaseAuth.instance.currentUser?.uid ?? '',
       ),
       appBar: AppBar(
         backgroundColor: primaryColor,
