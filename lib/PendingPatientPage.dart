@@ -382,6 +382,7 @@ class _PendingPatientPageState extends State<PendingPatientPage> {
                               _editSaved = true;
                             });
                             if (mounted) {
+                              // ignore: use_build_context_synchronously
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('تم حفظ التعديلات بنجاح')),
                               );

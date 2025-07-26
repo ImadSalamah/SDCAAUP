@@ -524,15 +524,27 @@ Colors.white.withAlpha(179),
                         backgroundColor: primaryColor,
                         elevation: 0,
                         automaticallyImplyLeading: false,
-                        title: Text(
-                          _translate(context, 'app_name'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        title: LayoutBuilder(
+                          builder: (context, constraints) {
+                            double fontSize;
+                            if (constraints.maxWidth > 700) {
+                              fontSize = 28;
+                            } else if (constraints.maxWidth > 400) {
+                              fontSize = 20;
+                            } else {
+                              fontSize = 16;
+                            }
+                            return Text(
+                              _translate(context, 'app_name'),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
                         ),
                         actions: [
                           IconButton(

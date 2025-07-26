@@ -727,383 +727,383 @@ class SignUpPageState extends State<SignUpPage> {
                 ),
               ],
             ),
+            resizeToAvoidBottomInset: true, // تأكيد السماح برفع الشاشة عند ظهور الكيبورد
             body: LayoutBuilder(
               builder: (context, constraints) {
                 final screenWidth = MediaQuery.of(context).size.width;
                 final isLargeScreen = screenWidth > 600;
+                final screenHeight = MediaQuery.of(context).size.height;
 
                 return Center(
                   child: SingleChildScrollView(
                     controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(), // يسمح بالتمرير دائماً
                     padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: isLargeScreen ? 600 : double.infinity,
-                          ),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // صورة شخصية
-                                Showcase(
-                                  key: _imageShowcaseKey,
-                                  description: _translate('showcase_image'),
-                                  child: GestureDetector(
-                                    onTap: _pickImage,
-                                    child: Container(
-                                      width: 150,
-                                      height: 150,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[100],
-                                        border: Border.all(color: primaryColor),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: _buildImageWidget(),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 30),
-                                
-                                // Personal Info Section
-                                Container(
-                                  padding: const EdgeInsets.all(20),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: isLargeScreen ? 600 : double.infinity,
+                        minHeight: isLargeScreen ? 0 : screenHeight, // يغطي كامل الشاشة في الشاشات الصغيرة
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // صورة شخصية
+                            Showcase(
+                              key: _imageShowcaseKey,
+                              description: _translate('showcase_image'),
+                              child: GestureDetector(
+                                onTap: _pickImage,
+                                child: Container(
+                                  width: 150,
+                                  height: 150,
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade300),
+                                    color: Colors.grey[100],
+                                    border: Border.all(color: primaryColor),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        _translate('personal_info'),
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Showcase(
-                                        key: _firstNameShowcaseKey,
-                                        description: _translate('help_first_name'),
-                                        child: _buildTextFormField(
-                                          controller: _firstNameController,
-                                          labelText: '${_translate('first_name')} ${_translate('required_field')}',
-                                          prefixIcon: Icon(Icons.person, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _firstNameFocus,
-                                          helpText: _translate('help_first_name'),
-                                          showcaseKey: _firstNameShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _fatherNameShowcaseKey,
-                                        description: _translate('help_father_name'),
-                                        child: _buildTextFormField(
-                                          controller: _fatherNameController,
-                                          labelText: '${_translate('father_name')} ${_translate('required_field')}',
-                                          prefixIcon: Icon(Icons.person, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _fatherNameFocus,
-                                          helpText: _translate('help_father_name'),
-                                          showcaseKey: _fatherNameShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _grandfatherNameShowcaseKey,
-                                        description: _translate('help_grandfather_name'),
-                                        child: _buildTextFormField(
-                                          controller: _grandfatherNameController,
-                                          labelText: '${_translate('grandfather_name')} ${_translate('required_field')}',
-                                          prefixIcon: Icon(Icons.person, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _grandfatherNameFocus,
-                                          helpText: _translate('help_grandfather_name'),
-                                          showcaseKey: _grandfatherNameShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _familyNameShowcaseKey,
-                                        description: _translate('help_family_name'),
-                                        child: _buildTextFormField(
-                                          controller: _familyNameController,
-                                          labelText: '${_translate('family_name')} ${_translate('required_field')}',
-                                          prefixIcon: Icon(Icons.person, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _familyNameFocus,
-                                          helpText: _translate('help_family_name'),
-                                          showcaseKey: _familyNameShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _idNumberShowcaseKey,
-                                        description: _translate('help_id_number'),
-                                        child: _buildTextFormField(
-                                          controller: _idNumberController,
-                                          labelText: '${_translate('id_number')} ${_translate('required_field')}',
-                                          keyboardType: TextInputType.number,
-                                          maxLength: 9,
-                                          prefixIcon: Icon(Icons.credit_card, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            if (value.length < 9) {
-                                              return _translate('validation_id_length');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _idNumberFocus,
-                                          helpText: _translate('help_id_number'),
-                                          showcaseKey: _idNumberShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _birthDateShowcaseKey,
-                                        description: _translate('help_birth_date'),
-                                        child: InkWell(
-                                          onTap: _selectBirthDate,
-                                          child: InputDecorator(
-                                            decoration: InputDecoration(
-                                              labelText: '${_translate('birth_date')} ${_translate('required_field')}',
-                                              labelStyle: TextStyle(color: primaryColor.withAlpha(204)),
-
-                                              prefixIcon: Icon(Icons.calendar_today, color: accentColor),
-                                              filled: true,
-                                              fillColor: Colors.grey[50],
-                                              border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.circular(10),
-                                                borderSide: BorderSide(color: Colors.grey.shade300),
-                                              ),
-                                              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                                            ),
-                                            child: Text(
-                                              _birthDate == null
-                                                  ? _translate('select_date')
-                                                  : DateFormat('yyyy-MM-dd').format(_birthDate!),
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                color: _birthDate == null ? Colors.grey[600] : Colors.black,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _genderShowcaseKey,
-                                        description: _translate('help_gender'),
-                                        child: _buildGenderRadioButtons(),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _phoneShowcaseKey,
-                                        description: _translate('help_phone'),
-                                        child: _buildTextFormField(
-                                          controller: _phoneController,
-                                          labelText: '${_translate('phone')} ${_translate('required_field')}',
-                                          keyboardType: TextInputType.phone,
-                                          maxLength: 10,
-                                          prefixIcon: Icon(Icons.phone, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            if (value.length < 10) {
-                                              return _translate('validation_phone_length');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _phoneFocus,
-                                          helpText: _translate('help_phone'),
-                                          showcaseKey: _phoneShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _addressShowcaseKey,
-                                        description: _translate('help_address'),
-                                        child: _buildTextFormField(
-                                          controller: _addressController,
-                                          labelText: '${_translate('address')} ${_translate('required_field')}',
-                                          prefixIcon: Icon(Icons.location_on, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _addressFocus,
-                                          helpText: _translate('help_address'),
-                                          showcaseKey: _addressShowcaseKey,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                
-                                // Account Info Section
-                                Container(
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade300),
+                                  child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        _translate('account_info'),
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Showcase(
-                                        key: _emailShowcaseKey,
-                                        description: _translate('help_email'),
-                                        child: _buildTextFormField(
-                                          controller: _emailController,
-                                          labelText: '${_translate('email')} ${_translate('required_field')}',
-                                          keyboardType: TextInputType.emailAddress,
-                                          prefixIcon: Icon(Icons.email, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            if (!value.contains('@')) {
-                                              return _translate('validation_email');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _emailFocus,
-                                          helpText: _translate('help_email'),
-                                          showcaseKey: _emailShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _passwordShowcaseKey,
-                                        description: _translate('help_password'),
-                                        child: _buildTextFormField(
-                                          controller: _passwordController,
-                                          labelText: '${_translate('password')} ${_translate('required_field')}',
-                                          obscureText: true,
-                                          prefixIcon: Icon(Icons.lock, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            if (value.length < 6) {
-                                              return _translate('validation_password_length');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _passwordFocus,
-                                          helpText: _translate('help_password'),
-                                          showcaseKey: _passwordShowcaseKey,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Showcase(
-                                        key: _confirmPasswordShowcaseKey,
-                                        description: _translate('help_confirm_password'),
-                                        child: _buildTextFormField(
-                                          controller: _confirmPasswordController,
-                                          labelText: '${_translate('confirm_password')} ${_translate('required_field')}',
-                                          obscureText: true,
-                                          prefixIcon: Icon(Icons.lock_outline, color: accentColor),
-                                          validator: (value) {
-                                            if (value == null || value.isEmpty) {
-                                              return _translate('validation_required');
-                                            }
-                                            if (value != _passwordController.text) {
-                                              return _translate('validation_password_match');
-                                            }
-                                            return null;
-                                          },
-                                          focusNode: _confirmPasswordFocus,
-                                          helpText: _translate('help_confirm_password'),
-                                          showcaseKey: _confirmPasswordShowcaseKey,
-                                        ),
-                                      ),
-                                    ],
+                                    child: _buildImageWidget(),
                                   ),
                                 ),
-                                const SizedBox(height: 30),
-                                
-                                // Register Button
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: _isLoading ? null : _registerUser,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: primaryColor,
-                                      padding: const EdgeInsets.symmetric(vertical: 18),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    child: _isLoading
-                                        ? const CircularProgressIndicator(
-                                            color: Colors.white,
-                                          )
-                                        : Text(
-                                            _translate('register_button'),
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                              ],
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 30),
+                            
+                            // Personal Info Section
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    _translate('personal_info'),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Showcase(
+                                    key: _firstNameShowcaseKey,
+                                    description: _translate('help_first_name'),
+                                    child: _buildTextFormField(
+                                      controller: _firstNameController,
+                                      labelText: '${_translate('first_name')} ${_translate('required_field')}',
+                                      prefixIcon: Icon(Icons.person, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _firstNameFocus,
+                                      helpText: _translate('help_first_name'),
+                                      showcaseKey: _firstNameShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _fatherNameShowcaseKey,
+                                    description: _translate('help_father_name'),
+                                    child: _buildTextFormField(
+                                      controller: _fatherNameController,
+                                      labelText: '${_translate('father_name')} ${_translate('required_field')}',
+                                      prefixIcon: Icon(Icons.person, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _fatherNameFocus,
+                                      helpText: _translate('help_father_name'),
+                                      showcaseKey: _fatherNameShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _grandfatherNameShowcaseKey,
+                                    description: _translate('help_grandfather_name'),
+                                    child: _buildTextFormField(
+                                      controller: _grandfatherNameController,
+                                      labelText: '${_translate('grandfather_name')} ${_translate('required_field')}',
+                                      prefixIcon: Icon(Icons.person, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _grandfatherNameFocus,
+                                      helpText: _translate('help_grandfather_name'),
+                                      showcaseKey: _grandfatherNameShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _familyNameShowcaseKey,
+                                    description: _translate('help_family_name'),
+                                    child: _buildTextFormField(
+                                      controller: _familyNameController,
+                                      labelText: '${_translate('family_name')} ${_translate('required_field')}',
+                                      prefixIcon: Icon(Icons.person, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _familyNameFocus,
+                                      helpText: _translate('help_family_name'),
+                                      showcaseKey: _familyNameShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _idNumberShowcaseKey,
+                                    description: _translate('help_id_number'),
+                                    child: _buildTextFormField(
+                                      controller: _idNumberController,
+                                      labelText: '${_translate('id_number')} ${_translate('required_field')}',
+                                      keyboardType: TextInputType.number,
+                                      maxLength: 9,
+                                      prefixIcon: Icon(Icons.credit_card, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        if (value.length < 9) {
+                                          return _translate('validation_id_length');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _idNumberFocus,
+                                      helpText: _translate('help_id_number'),
+                                      showcaseKey: _idNumberShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _birthDateShowcaseKey,
+                                    description: _translate('help_birth_date'),
+                                    child: InkWell(
+                                      onTap: _selectBirthDate,
+                                      child: InputDecorator(
+                                        decoration: InputDecoration(
+                                          labelText: '${_translate('birth_date')} ${_translate('required_field')}',
+                                          labelStyle: TextStyle(color: primaryColor.withAlpha(204)),
+
+                                          prefixIcon: Icon(Icons.calendar_today, color: accentColor),
+                                          filled: true,
+                                          fillColor: Colors.grey[50],
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                            borderSide: BorderSide(color: Colors.grey.shade300),
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                                        ),
+                                        child: Text(
+                                          _birthDate == null
+                                              ? _translate('select_date')
+                                              : DateFormat('yyyy-MM-dd').format(_birthDate!),
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: _birthDate == null ? Colors.grey[600] : Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _genderShowcaseKey,
+                                    description: _translate('help_gender'),
+                                    child: _buildGenderRadioButtons(),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _phoneShowcaseKey,
+                                    description: _translate('help_phone'),
+                                    child: _buildTextFormField(
+                                      controller: _phoneController,
+                                      labelText: '${_translate('phone')} ${_translate('required_field')}',
+                                      keyboardType: TextInputType.phone,
+                                      maxLength: 10,
+                                      prefixIcon: Icon(Icons.phone, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        if (value.length < 10) {
+                                          return _translate('validation_phone_length');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _phoneFocus,
+                                      helpText: _translate('help_phone'),
+                                      showcaseKey: _phoneShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _addressShowcaseKey,
+                                    description: _translate('help_address'),
+                                    child: _buildTextFormField(
+                                      controller: _addressController,
+                                      labelText: '${_translate('address')} ${_translate('required_field')}',
+                                      prefixIcon: Icon(Icons.location_on, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _addressFocus,
+                                      helpText: _translate('help_address'),
+                                      showcaseKey: _addressShowcaseKey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            
+                            // Account Info Section
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    _translate('account_info'),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Showcase(
+                                    key: _emailShowcaseKey,
+                                    description: _translate('help_email'),
+                                    child: _buildTextFormField(
+                                      controller: _emailController,
+                                      labelText: '${_translate('email')} ${_translate('required_field')}',
+                                      keyboardType: TextInputType.emailAddress,
+                                      prefixIcon: Icon(Icons.email, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        if (!value.contains('@')) {
+                                          return _translate('validation_email');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _emailFocus,
+                                      helpText: _translate('help_email'),
+                                      showcaseKey: _emailShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _passwordShowcaseKey,
+                                    description: _translate('help_password'),
+                                    child: _buildTextFormField(
+                                      controller: _passwordController,
+                                      labelText: '${_translate('password')} ${_translate('required_field')}',
+                                      obscureText: true,
+                                      prefixIcon: Icon(Icons.lock, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        if (value.length < 6) {
+                                          return _translate('validation_password_length');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _passwordFocus,
+                                      helpText: _translate('help_password'),
+                                      showcaseKey: _passwordShowcaseKey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Showcase(
+                                    key: _confirmPasswordShowcaseKey,
+                                    description: _translate('help_confirm_password'),
+                                    child: _buildTextFormField(
+                                      controller: _confirmPasswordController,
+                                      labelText: '${_translate('confirm_password')} ${_translate('required_field')}',
+                                      obscureText: true,
+                                      prefixIcon: Icon(Icons.lock_outline, color: accentColor),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return _translate('validation_required');
+                                        }
+                                        if (value != _passwordController.text) {
+                                          return _translate('validation_password_match');
+                                        }
+                                        return null;
+                                      },
+                                      focusNode: _confirmPasswordFocus,
+                                      helpText: _translate('help_confirm_password'),
+                                      showcaseKey: _confirmPasswordShowcaseKey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                            
+                            // Register Button
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _registerUser,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: _isLoading
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                    : Text(
+                                        _translate('register_button'),
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  ));
+                },
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    
   }
 }

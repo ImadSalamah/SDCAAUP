@@ -267,43 +267,84 @@ class _StudentAppointmentsPageState extends State<StudentAppointmentsPage> {
                         ),
                       ),
                     const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.calendar_today, color: Color(0xFF2A7A94)),
-                            label: Text(
-                              selectedDate == null
-                                  ? (Localizations.localeOf(context).languageCode == 'ar' ? 'اختر اليوم' : 'Select day')
-                                  : '${selectedDate!.year}/${selectedDate!.month}/${selectedDate!.day}',
-                              style: const TextStyle(color: Color(0xFF2A7A94)),
-                            ),
-                            onPressed: _pickDate,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.access_time, color: Color(0xFF2A7A94)),
-                            label: Text(
-                              startTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'من' : 'From') : startTime!.format(context),
-                              style: const TextStyle(color: Color(0xFF2A7A94)),
-                            ),
-                            onPressed: () => _pickTime(true),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.access_time_filled, color: Color(0xFF2A7A94)),
-                            label: Text(
-                              endTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'إلى' : 'To') : endTime!.format(context),
-                              style: const TextStyle(color: Color(0xFF2A7A94)),
-                            ),
-                            onPressed: () => _pickTime(false),
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 400) {
+                          // شاشة صغيرة: رتبهم عمودي
+                          return Column(
+                            children: [
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.calendar_today, color: Color(0xFF2A7A94)),
+                                label: Text(
+                                  selectedDate == null
+                                      ? (Localizations.localeOf(context).languageCode == 'ar' ? 'اختر اليوم' : 'Select day')
+                                      : '${selectedDate!.year}/${selectedDate!.month}/${selectedDate!.day}',
+                                  style: const TextStyle(color: Color(0xFF2A7A94)),
+                                ),
+                                onPressed: _pickDate,
+                              ),
+                              const SizedBox(height: 8),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.access_time, color: Color(0xFF2A7A94)),
+                                label: Text(
+                                  startTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'من' : 'From') : startTime!.format(context),
+                                  style: const TextStyle(color: Color(0xFF2A7A94)),
+                                ),
+                                onPressed: () => _pickTime(true),
+                              ),
+                              const SizedBox(height: 8),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.access_time_filled, color: Color(0xFF2A7A94)),
+                                label: Text(
+                                  endTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'إلى' : 'To') : endTime!.format(context),
+                                  style: const TextStyle(color: Color(0xFF2A7A94)),
+                                ),
+                                onPressed: () => _pickTime(false),
+                              ),
+                            ],
+                          );
+                        } else {
+                          // شاشة كبيرة: رتبهم أفقي
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.calendar_today, color: Color(0xFF2A7A94)),
+                                  label: Text(
+                                    selectedDate == null
+                                        ? (Localizations.localeOf(context).languageCode == 'ar' ? 'اختر اليوم' : 'Select day')
+                                        : '${selectedDate!.year}/${selectedDate!.month}/${selectedDate!.day}',
+                                    style: const TextStyle(color: Color(0xFF2A7A94)),
+                                  ),
+                                  onPressed: _pickDate,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.access_time, color: Color(0xFF2A7A94)),
+                                  label: Text(
+                                    startTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'من' : 'From') : startTime!.format(context),
+                                    style: const TextStyle(color: Color(0xFF2A7A94)),
+                                  ),
+                                  onPressed: () => _pickTime(true),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.access_time_filled, color: Color(0xFF2A7A94)),
+                                  label: Text(
+                                    endTime == null ? (Localizations.localeOf(context).languageCode == 'ar' ? 'إلى' : 'To') : endTime!.format(context),
+                                    style: const TextStyle(color: Color(0xFF2A7A94)),
+                                  ),
+                                  onPressed: () => _pickTime(false),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(height: 18),
                     _isLoading

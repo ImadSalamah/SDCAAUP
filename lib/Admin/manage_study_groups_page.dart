@@ -302,11 +302,32 @@ class AdminManageGroupsPageState extends State<AdminManageGroupsPage> {
           'updatedAt': DateTime.now().toString(),
         };
 
+        String courseId = _selectedCourse!.split('(').last.replaceAll(')', '').trim();
+
+        // حفظ الشعبة
         if (_editingGroupId == null) {
           groupData['createdAt'] = DateTime.now().toString();
-          await _dbRef.child('studyGroups').push().set(groupData);
+          final newRef = _dbRef.child('studyGroups').push();
+          await newRef.set(groupData);
         } else {
           await _dbRef.child('studyGroups/$_editingGroupId').update(groupData);
+        }
+
+        // تحديث student_case_flags
+        final caseFlagsRef = _dbRef.child('student_case_flags/$courseId');
+        final caseFlagsSnapshot = await caseFlagsRef.get();
+        Map<dynamic, dynamic> caseFlags = {};
+        if (caseFlagsSnapshot.exists) {
+          caseFlags = caseFlagsSnapshot.value as Map<dynamic, dynamic>;
+        }
+
+        // أضف الطلاب الجدد فقط
+        for (var studentId in _selectedStudents) {
+          final student = _allStudents.firstWhere((s) => s['id'] == studentId);
+          final studentUid = student['uid'];
+          if (!caseFlags.containsKey(studentUid)) {
+            await caseFlagsRef.child(studentUid).set(1); // القيمة الابتدائية
+          }
         }
 
         if (!mounted) return;

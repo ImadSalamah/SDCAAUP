@@ -592,25 +592,30 @@ class _PaedodonticsFormState extends State<PaedodonticsForm> {
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFF2A7A94);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    final baseFontSize = isSmallScreen ? 13.0 : 16.0;
+    final titleFontSize = isSmallScreen ? 16.0 : 20.0;
+    final fieldPadding = isSmallScreen ? 8.0 : 16.0;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('(${widget.caseNumber}) أخذ التاريخ والفحص والتخطيط',
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 20,
+              fontSize: titleFontSize,
               color: Colors.white,
             ),
         ),
         centerTitle: true,
-        backgroundColor: primaryColor, // لون أساسي للخلفية
+        backgroundColor: primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: Container(
-color: primaryColor.withAlpha(15),
+        color: primaryColor.withAlpha(15),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(fieldPadding),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Form(
@@ -671,7 +676,7 @@ color: primaryColor.withAlpha(15),
                                 (widget.patient['gender'] ?? '').toString().toLowerCase() == 'male' ? 'ذكر' : (widget.patient['gender'] ?? '').toString().toLowerCase() == 'female' ? 'أنثى' : '-',
                                 style: const TextStyle(fontSize: 15),
                               ),
-// ...existing code...
+                              const SizedBox(width: 18),
                               const Icon(Icons.calendar_today, color: primaryColor, size: 20),
                               const SizedBox(width: 6),
                               Text(
@@ -743,68 +748,60 @@ color: primaryColor.withAlpha(15),
                     alignment: Alignment.centerLeft,
                     child: const Text('Medical History', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 4.5,
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 0,
                     children: [
-                      ...medicalHistoryOptions.map((option) => Theme(
-                            data: Theme.of(context).copyWith(
-                              unselectedWidgetColor: Colors.white, // لون غير محدد أبيض
-                              checkboxTheme: CheckboxThemeData(
-                                fillColor: WidgetStateProperty.resolveWith<Color>((states) {
-                                  if (states.contains(WidgetState.selected)) {
-                                    return primaryColor; // عند التحديد يصبح اللون الأساسي
-                                  }
-                                  return Colors.white; // غير محدد أبيض
-                                }),
-                                checkColor: WidgetStateProperty.all(Colors.white), // لون علامة الصح
-                              ),
+                      ...medicalHistoryOptions.map((option) => SizedBox(
+                        width: isSmallScreen ? screenWidth / 1.1 : screenWidth / 2.2,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            unselectedWidgetColor: Colors.white,
+                            checkboxTheme: CheckboxThemeData(
+                              fillColor: WidgetStateProperty.resolveWith<Color>((states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return primaryColor;
+                                }
+                                return Colors.white;
+                              }),
+                              checkColor: WidgetStateProperty.all(Colors.white),
                             ),
-                            child: CheckboxListTile(
-                              title: Text(option),
-                              value: selectedMedicalHistory.contains(option),
-                              onChanged: (val) {
-                                setState(() {
-                                  if (val == true) {
-                                    selectedMedicalHistory.add(option);
-                                    if (option == 'Others') showOtherMedical = true;
-                                  } else {
-                                    selectedMedicalHistory.remove(option);
-                                    if (option == 'Others') {
-                                      showOtherMedical = false;
-                                      otherMedicalController.clear();
-                                    }
-                                  }
-                                });
-                              },
-                              controlAffinity: ListTileControlAffinity.leading,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                              tristate: false,
-                            ),
-                          )),
+                          ),
+                          child: CheckboxListTile(
+                            title: Text(option),
+                            value: selectedMedicalHistory.contains(option),
+                            onChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  selectedMedicalHistory.add(option);
+                                  if (option == 'Others') showOtherMedical = true;
+                                } else {
+                                  selectedMedicalHistory.remove(option);
+                                  if (option == 'Others') showOtherMedical = false;
+                                }
+                              });
+                            },
+                            controlAffinity: ListTileControlAffinity.leading,
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      )),
                     ],
                   ),
-                  if (showOtherMedical)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: TextFormField(
-                        controller: otherMedicalController,
-                        decoration: const InputDecoration(
-                          labelText: 'Please specify Other',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (value) {
-                          if (showOtherMedical && (value == null || value.isEmpty)) {
-                            return 'Required';
-                          }
-                          return null;
-                        },
+                  if (showOtherMedical) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: otherMedicalController,
+                      decoration: const InputDecoration(
+                        labelText: 'Other Medical History',
+                        border: OutlineInputBorder(),
                       ),
+                      maxLines: 3,
                     ),
-                  const SizedBox(height: 16), // فراغ بين Medical History و Hospitalization
-                  // Hospitalization (RadioListTile)
+                  ],
+                  const SizedBox(height: 16),
+                  // Hospitalization
                   Container(
                     alignment: Alignment.centerLeft,
                     child: const Text('Hospitalization', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -840,133 +837,46 @@ color: primaryColor.withAlpha(15),
                     ),
                   ),
                   if (hospitalization == 'Yes') ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: hospitalizationDateController,
+                      decoration: const InputDecoration(
+                        labelText: 'Date of hospitalization',
+                        border: OutlineInputBorder(),
+                      ),
+                      readOnly: true,
                       onTap: () async {
-                        final picked = await showDatePicker(
+                        final pickedDate = await showDatePicker(
                           context: context,
                           initialDate: hospitalizationDate ?? DateTime.now(),
                           firstDate: DateTime(2000),
                           lastDate: DateTime.now(),
                         );
-                        if (picked != null) {
+                        if (pickedDate != null) {
                           setState(() {
-                            hospitalizationDate = picked;
-                            hospitalizationDateController.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                            hospitalizationDate = pickedDate;
+                            hospitalizationDateController.text = "${pickedDate.year}-${pickedDate.month.toString().padLeft(2, '0')}-${pickedDate.day.toString().padLeft(2, '0')}";
                           });
                         }
                       },
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          controller: hospitalizationDateController,
-                          decoration: const InputDecoration(
-                            labelText: 'Date',
-                            border: OutlineInputBorder(),
-                            suffixIcon: Icon(Icons.calendar_today),
-                          ),
-                          validator: (value) {
-                            if (hospitalization == 'Yes' && (value == null || value.isEmpty)) {
-                              return 'Required';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: hospitalizationReasonController,
                       decoration: const InputDecoration(
-                        labelText: 'Reason',
+                        labelText: 'Reason for hospitalization',
                         border: OutlineInputBorder(),
                       ),
-                      minLines: 2,
-                      maxLines: 4,
-                      validator: (value) {
-                        if (hospitalization == 'Yes' && (value == null || value.isEmpty)) {
-                          return 'Required';
-                        }
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: hospitalizationMedicationController,
                       decoration: const InputDecoration(
-                        labelText: 'Medication',
+                        labelText: 'Medication during hospitalization',
                         border: OutlineInputBorder(),
                       ),
-                      minLines: 2,
-                      maxLines: 4,
-                      validator: (value) {
-                        if (hospitalization == 'Yes' && (value == null || value.isEmpty)) {
-                          return 'Required';
-                        }
-                        return null;
-                      },
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: extraOralExamController,
-                    decoration: const InputDecoration(
-                      labelText: 'Extra Oral Exam',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: intraOralSoftTissueController,
-                    decoration: const InputDecoration(
-                      labelText: 'Intra Oral (Soft Tissue)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Oral Hygiene Level (RadioListTile)
-                  Container(
-                    alignment: Alignment.centerLeft,
-                    child: const Text('Oral Hygiene Level', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      unselectedWidgetColor: primaryColor,
-                      radioTheme: RadioThemeData(
-                        fillColor: WidgetStateProperty.all(primaryColor),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Good'),
-                            value: 'Good',
-                            groupValue: oralHygieneLevel,
-                            onChanged: (val) => setState(() => oralHygieneLevel = val),
-                            dense: true,
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Fair'),
-                            value: 'Fair',
-                            groupValue: oralHygieneLevel,
-                            onChanged: (val) => setState(() => oralHygieneLevel = val),
-                            dense: true,
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Poor'),
-                            value: 'Poor',
-                            groupValue: oralHygieneLevel,
-                            onChanged: (val) => setState(() => oralHygieneLevel = val),
-                            dense: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 16),
                   // Plaque index table
                   Container(
@@ -1097,91 +1007,128 @@ color: primaryColor.withAlpha(15),
                     alignment: Alignment.centerLeft,
                     child: const Text('Molar Relationships (Primary)', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      radioTheme: RadioThemeData(
-                        fillColor: WidgetStateProperty.all(primaryColor),
-                      ),
-                    ),
-                    child: Row(
+                  // Responsive layout for Molar Relationships (Primary)
+                  if (!isSmallScreen)
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text('Right:'),
-                        ...molarOptions.map((opt) => Expanded(
-                              child: RadioListTile<String>(
-                                title: Text(opt),
-                                value: opt,
-                                groupValue: molarRelationshipPrimaryRight,
-                                onChanged: (val) => setState(() => molarRelationshipPrimaryRight = val),
-                              ),
-                            )),
+                        Text('Right:', style: TextStyle(fontSize: baseFontSize)),
+                        ...molarOptions.map((opt) => SizedBox(
+                          width: screenWidth / 4.5,
+                          child: RadioListTile<String>(
+                            title: Text(opt, style: TextStyle(fontSize: baseFontSize - 2)),
+                            value: opt,
+                            groupValue: molarRelationshipPrimaryRight,
+                            onChanged: (val) => setState(() => molarRelationshipPrimaryRight = val),
+                          ),
+                        )),
+                        Text('Left:', style: TextStyle(fontSize: baseFontSize)),
+                        ...molarOptions.map((opt) => SizedBox(
+                          width: screenWidth / 4.5,
+                          child: RadioListTile<String>(
+                            title: Text(opt, style: TextStyle(fontSize: baseFontSize - 2)),
+                            value: opt,
+                            groupValue: molarRelationshipPrimaryLeft,
+                            onChanged: (val) => setState(() => molarRelationshipPrimaryLeft = val),
+                          ),
+                        )),
+                      ],
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Right:', style: TextStyle(fontSize: baseFontSize)),
+                        ...molarOptions.map((opt) => RadioListTile<String>(
+                          title: Text(opt, style: TextStyle(fontSize: baseFontSize - 2)),
+                          value: opt,
+                          groupValue: molarRelationshipPrimaryRight,
+                          onChanged: (val) => setState(() => molarRelationshipPrimaryRight = val),
+                        )),
+                        Text('Left:', style: TextStyle(fontSize: baseFontSize)),
+                        ...molarOptions.map((opt) => RadioListTile<String>(
+                          title: Text(opt, style: TextStyle(fontSize: baseFontSize - 2)),
+                          value: opt,
+                          groupValue: molarRelationshipPrimaryLeft,
+                          onChanged: (val) => setState(() => molarRelationshipPrimaryLeft = val),
+                        )),
                       ],
                     ),
-                  ),
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      radioTheme: RadioThemeData(
-                        fillColor: WidgetStateProperty.all(primaryColor),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Text('Left:'),
-                        ...molarOptions.map((opt) => Expanded(
-                              child: RadioListTile<String>(
-                                title: Text(opt),
-                                value: opt,
-                                groupValue: molarRelationshipPrimaryLeft,
-                                onChanged: (val) => setState(() => molarRelationshipPrimaryLeft = val),
-                              ),
-                            )),
-                      ],
-                    ),
-                  ),
                   // Molar Relationships (Permanent)
                   Container(
                     alignment: Alignment.centerLeft,
                     child: const Text('Molar Relationships (Permanent)', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      radioTheme: RadioThemeData(
-                        fillColor: WidgetStateProperty.all(primaryColor),
+                  // Responsive layout for Molar Relationships (Permanent)
+                  if (!isSmallScreen)
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        radioTheme: RadioThemeData(
+                          fillColor: WidgetStateProperty.all(primaryColor),
+                        ),
                       ),
-                    ),
-                    child: Row(
+                      child: Row(
+                        children: [
+                          const Text('Right:'),
+                          ...molarOptions.map((opt) => Expanded(
+                                child: RadioListTile<String>(
+                                  title: Text(opt),
+                                  value: opt,
+                                  groupValue: molarRelationshipPermanentRight,
+                                  onChanged: (val) => setState(() => molarRelationshipPermanentRight = val),
+                                ),
+                              )),
+                        ],
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Right:'),
-                        ...molarOptions.map((opt) => Expanded(
-                              child: RadioListTile<String>(
-                                title: Text(opt),
-                                value: opt,
-                                groupValue: molarRelationshipPermanentRight,
-                                onChanged: (val) => setState(() => molarRelationshipPermanentRight = val),
-                              ),
-                            )),
+                        ...molarOptions.map((opt) => RadioListTile<String>(
+                          title: Text(opt),
+                          value: opt,
+                          groupValue: molarRelationshipPermanentRight,
+                          onChanged: (val) => setState(() => molarRelationshipPermanentRight = val),
+                        )),
                       ],
                     ),
-                  ),
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      radioTheme: RadioThemeData(
-                        fillColor: WidgetStateProperty.all(primaryColor),
+                  if (!isSmallScreen)
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        radioTheme: RadioThemeData(
+                          fillColor: WidgetStateProperty.all(primaryColor),
+                        ),
                       ),
-                    ),
-                    child: Row(
+                      child: Row(
+                        children: [
+                          const Text('Left:'),
+                          ...molarOptions.map((opt) => Expanded(
+                                child: RadioListTile<String>(
+                                  title: Text(opt),
+                                  value: opt,
+                                  groupValue: molarRelationshipPermanentLeft,
+                                  onChanged: (val) => setState(() => molarRelationshipPermanentLeft = val),
+                                ),
+                              )),
+                        ],
+                      ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Left:'),
-                        ...molarOptions.map((opt) => Expanded(
-                              child: RadioListTile<String>(
-                                title: Text(opt),
-                                value: opt,
-                                groupValue: molarRelationshipPermanentLeft,
-                                onChanged: (val) => setState(() => molarRelationshipPermanentLeft = val),
-                              ),
-                            )),
+                        ...molarOptions.map((opt) => RadioListTile<String>(
+                          title: Text(opt),
+                          value: opt,
+                          groupValue: molarRelationshipPermanentLeft,
+                          onChanged: (val) => setState(() => molarRelationshipPermanentLeft = val),
+                        )),
                       ],
                     ),
-                  ),
                   // Primate Space (Radio buttons: Upper, Lower)
                   Container(
                     alignment: Alignment.centerLeft,
@@ -1356,21 +1303,19 @@ color: primaryColor.withAlpha(15),
                       if (label == '') {
                         return const SizedBox(); // فراغ في المنتصف
                       }
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            canineGridSelected[index] = !canineGridSelected[index];
-                          });
-                        },
-                        child: Container(
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: canineGridSelected[index] ? primaryColor : Colors.white,
-                            border: Border.all(color: primaryColor, width: 1.5),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                      return Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: canineGridSelected[index] ? primaryColor : Colors.white,
+                          border: Border.all(color: primaryColor, width: 1.5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
                           child: Text(
                             label,
+                            maxLines: 1,
+                            overflow: TextOverflow.visible,
                             style: TextStyle(
                               color: canineGridSelected[index] ? Colors.white : primaryColor,
                               fontWeight: FontWeight.bold,
